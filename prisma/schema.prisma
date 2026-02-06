@@ -1,0 +1,48 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Patient {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  calls     WebhookEvent[]
+}
+
+model WebhookEvent {
+  id              String   @id @default(cuid())
+  type            String
+  eventTimestamp  Int
+  agentId         String?
+  conversationId  String?  @unique
+  status          String?
+  data            Json
+  createdAt       DateTime @default(now())
+
+  // Extracted cataract-specific columns
+  callSuccessful  Boolean?
+  callDurationSecs Float?
+  visionScale     Int?
+  activities      String?
+  visionPreference String?
+
+  // Patient relationship
+  patientId       String?
+  patient         Patient? @relation(fields: [patientId], references: [id])
+
+  @@index([type])
+  @@index([conversationId])
+  @@index([createdAt])
+  @@index([patientId])
+  @@index([callSuccessful])
+  @@index([visionScale])
+  @@index([visionPreference])
+}
