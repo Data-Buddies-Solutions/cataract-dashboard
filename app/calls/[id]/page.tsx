@@ -4,6 +4,14 @@ import { prisma } from "@/lib/db";
 import { LocalTime } from "@/app/components/local-time";
 import { CallOutcomeBadge } from "@/app/components/call-outcome-badge";
 import { PatientTagForm } from "@/app/components/patient-tag-form";
+import { Badge } from "@/components/ui/badge";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import type {
   EventData,
   TranscriptTurn,
@@ -33,6 +41,23 @@ function scaleColorClass(scale: number): string {
   if (scale <= 3) return "text-green-700";
   if (scale <= 6) return "text-amber-600";
   return "text-red-700";
+}
+
+function scaleColorBg(scale: number): string {
+  if (scale <= 3) return "bg-green-50 border-green-200";
+  if (scale <= 6) return "bg-amber-50 border-amber-200";
+  return "bg-red-50 border-red-200";
+}
+
+function sentimentBadgeClass(sentiment: string): string {
+  const s = sentiment.toLowerCase();
+  if (s.includes("positive") || s.includes("happy") || s.includes("satisfied"))
+    return "bg-green-100 text-green-800 border-green-300";
+  if (s.includes("negative") || s.includes("unhappy") || s.includes("frustrated"))
+    return "bg-red-100 text-red-800 border-red-300";
+  if (s.includes("neutral") || s.includes("mixed"))
+    return "bg-gray-100 text-gray-800 border-gray-300";
+  return "bg-blue-100 text-blue-800 border-blue-300";
 }
 
 function findDataCollectionEntry(
@@ -79,31 +104,46 @@ export default async function CallDetailPage({
       ) as EvaluationCriteriaEntry[])
     : [];
 
-  // Find cataract-specific entries with their rationale
+  // Extract all data collection entries
   const visionScaleEntry = findDataCollectionEntry(
-    dcr,
-    "scale",
-    "impact",
-    "rating",
-    "score"
+    dcr, "scale", "impact", "rating", "score"
   );
   const activitiesEntry = findDataCollectionEntry(
-    dcr,
-    "activit",
-    "daily",
-    "affected",
-    "struggle",
-    "difficult"
+    dcr, "activit", "daily", "affected", "struggle", "difficult"
   );
   const preferenceEntry = findDataCollectionEntry(
-    dcr,
-    "preference",
-    "goal",
-    "after",
-    "post",
-    "want",
-    "hope"
+    dcr, "preference", "goal", "after", "post", "want", "hope"
   );
+  const hobbiesEntry = findDataCollectionEntry(
+    dcr, "hobby", "hobbies", "lifestyle", "leisure"
+  );
+  const glassesEntry = findDataCollectionEntry(
+    dcr, "glass", "independence", "spectacle"
+  );
+  const premiumLensEntry = findDataCollectionEntry(
+    dcr, "premium", "lens interest", "iol", "multifocal", "toric"
+  );
+  const laserEntry = findDataCollectionEntry(
+    dcr, "femtosecond", "laser"
+  );
+  const medicalEntry = findDataCollectionEntry(
+    dcr, "medical", "condition", "health", "medication"
+  );
+  const concernsEntry = findDataCollectionEntry(
+    dcr, "concern", "question", "nervous", "worry", "fear"
+  );
+  const sentimentEntry = findDataCollectionEntry(
+    dcr, "sentiment", "mood", "tone"
+  );
+  const patientNameEntry = findDataCollectionEntry(
+    dcr, "patient name", "name"
+  );
+  const driverEntry = findDataCollectionEntry(
+    dcr, "driver", "ride", "transport", "accompan"
+  );
+
+  const patientName = patientNameEntry?.value || event.patient?.name || null;
+  const sentimentValue = sentimentEntry?.value || null;
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
@@ -114,36 +154,66 @@ export default async function CallDetailPage({
         &larr; Back to calls
       </Link>
 
-      {/* Header */}
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">
-          <LocalTime
-            date={new Date(event.eventTimestamp * 1000).toISOString()}
+      {/* Top Banner */}
+      <div className="mb-6 rounded-xl border bg-white p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {patientName || "Unknown Patient"}
+            </h1>
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
+              <LocalTime
+                date={new Date(event.eventTimestamp * 1000).toISOString()}
+              />
+              {duration != null && (
+                <>
+                  <span>&middot;</span>
+                  <span>{formatDuration(duration)}</span>
+                </>
+              )}
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {sentimentValue && (
+              <span
+                className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${sentimentBadgeClass(sentimentValue)}`}
+              >
+                {sentimentValue}
+              </span>
+            )}
+            <CallOutcomeBadge successful={event.callSuccessful} />
+          </div>
+        </div>
+
+        {/* Patient tag */}
+        <div className="mt-4">
+          <PatientTagForm
+            callId={event.id}
+            currentPatientId={event.patientId}
+            currentPatientName={event.patient?.name ?? null}
           />
-        </h1>
-        <CallOutcomeBadge successful={event.callSuccessful} />
+        </div>
       </div>
 
-      {/* Patient tag */}
-      <div className="mb-6">
-        <PatientTagForm
-          callId={event.id}
-          currentPatientId={event.patientId}
-          currentPatientName={event.patient?.name ?? null}
-        />
-      </div>
-
-      {/* Cataract Data Cards */}
+      {/* Key Metrics Row */}
       <section className="mb-6">
-        <h2 className="mb-3 text-lg font-semibold">Cataract Assessment</h2>
-        <div className="grid gap-3 sm:grid-cols-3">
-          {/* Vision Scale */}
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+          Key Metrics
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Vision Impact */}
+          <div
+            className={`rounded-lg border p-4 ${
+              event.visionScale != null
+                ? scaleColorBg(event.visionScale)
+                : "border-gray-200 bg-white"
+            }`}
+          >
             <h3 className="text-xs font-medium uppercase text-gray-500">
-              Vision Impact Scale
+              Vision Impact
             </h3>
             <p
-              className={`mt-1 text-4xl font-bold ${
+              className={`mt-1 text-3xl font-bold ${
                 event.visionScale != null
                   ? scaleColorClass(event.visionScale)
                   : "text-gray-400"
@@ -152,7 +222,7 @@ export default async function CallDetailPage({
               {event.visionScale != null ? (
                 <>
                   {event.visionScale}
-                  <span className="text-lg font-normal text-gray-400">
+                  <span className="text-base font-normal text-gray-400">
                     /10
                   </span>
                 </>
@@ -160,44 +230,139 @@ export default async function CallDetailPage({
                 "—"
               )}
             </p>
-            {visionScaleEntry?.rationale && (
-              <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-                {visionScaleEntry.rationale}
-              </p>
-            )}
           </div>
 
-          {/* Activities */}
+          {/* Glasses Preference */}
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <h3 className="text-xs font-medium uppercase text-gray-500">
-              Affected Activities
+              Glasses Preference
             </h3>
-            <p className="mt-1 text-sm font-medium text-gray-900">
-              {event.activities ?? "—"}
+            <p className="mt-1">
+              {glassesEntry?.value ? (
+                <Badge variant="secondary" className="text-sm">
+                  {glassesEntry.value}
+                </Badge>
+              ) : preferenceEntry?.value ? (
+                <Badge variant="secondary" className="text-sm">
+                  {preferenceEntry.value}
+                </Badge>
+              ) : (
+                <span className="text-sm text-gray-400">—</span>
+              )}
             </p>
-            {activitiesEntry?.rationale && (
-              <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-                {activitiesEntry.rationale}
-              </p>
-            )}
           </div>
 
-          {/* Vision Preference */}
+          {/* Premium Lens Interest */}
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <h3 className="text-xs font-medium uppercase text-gray-500">
-              Vision Preference
+              Premium Lens Interest
             </h3>
-            <p className="mt-1 text-sm font-medium text-gray-900">
-              {event.visionPreference ?? "—"}
+            <p className="mt-1">
+              {premiumLensEntry?.value ? (
+                <PremiumLensBadge value={premiumLensEntry.value} />
+              ) : (
+                <span className="text-sm text-gray-400">—</span>
+              )}
             </p>
-            {preferenceEntry?.rationale && (
-              <p className="mt-2 text-sm text-gray-500 leading-relaxed">
-                {preferenceEntry.rationale}
-              </p>
-            )}
+          </div>
+
+          {/* Femtosecond Laser */}
+          <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <h3 className="text-xs font-medium uppercase text-gray-500">
+              Femtosecond Laser
+            </h3>
+            <p className="mt-1">
+              {laserEntry?.value ? (
+                <Badge variant="outline" className="text-sm">
+                  {laserEntry.value}
+                </Badge>
+              ) : (
+                <span className="text-sm text-gray-400">—</span>
+              )}
+            </p>
           </div>
         </div>
       </section>
+
+      {/* Details Section */}
+      <section className="mb-6">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+          Details
+        </h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {/* Lifestyle & Hobbies */}
+          <Card className="py-4">
+            <CardHeader className="pb-0 pt-0">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Lifestyle & Hobbies
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-900">
+                {hobbiesEntry?.value || "—"}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Activities Affected */}
+          <Card className="py-4">
+            <CardHeader className="pb-0 pt-0">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Activities Affected
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-900">
+                {activitiesEntry?.value || event.activities || "—"}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Medical Conditions */}
+          <Card className="py-4">
+            <CardHeader className="pb-0 pt-0">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Medical Conditions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-900">
+                {medicalEntry?.value || "—"}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Patient Concerns & Questions */}
+          <Card className="py-4">
+            <CardHeader className="pb-0 pt-0">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Concerns & Questions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-900">
+                {concernsEntry?.value || "—"}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Driver Confirmed */}
+          <Card className="py-4 sm:col-span-2">
+            <CardHeader className="pb-0 pt-0">
+              <CardTitle className="text-sm font-medium text-gray-500">
+                Driver / Transportation
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-gray-900">
+                {driverEntry?.value || "—"}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      <Separator className="my-6" />
 
       {/* Transcript Summary */}
       {summary && (
@@ -319,5 +484,37 @@ export default async function CallDetailPage({
         </pre>
       </details>
     </main>
+  );
+}
+
+function PremiumLensBadge({ value }: { value: string }) {
+  const lower = value.toLowerCase();
+  let colorClass = "bg-gray-100 text-gray-800 border-gray-300";
+  if (
+    lower.includes("yes") ||
+    lower.includes("interested") ||
+    lower.includes("high")
+  ) {
+    colorClass = "bg-green-100 text-green-800 border-green-300";
+  } else if (
+    lower.includes("no") ||
+    lower.includes("not interested") ||
+    lower.includes("declined")
+  ) {
+    colorClass = "bg-red-100 text-red-800 border-red-300";
+  } else if (
+    lower.includes("maybe") ||
+    lower.includes("unsure") ||
+    lower.includes("considering")
+  ) {
+    colorClass = "bg-amber-100 text-amber-800 border-amber-300";
+  }
+
+  return (
+    <span
+      className={`inline-flex rounded-full border px-3 py-0.5 text-sm font-medium ${colorClass}`}
+    >
+      {value}
+    </span>
   );
 }
