@@ -1,15 +1,26 @@
 "use client";
 
+import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-} from "recharts";
-import { ChartWrapper } from "@/app/components/chart-wrapper";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+
+const chartConfig = {
+  scale: {
+    label: "Vision Scale",
+    color: "var(--medical-critical)",
+  },
+} satisfies ChartConfig;
 
 export function VisionScaleOverTimeChart({
   data,
@@ -17,23 +28,45 @@ export function VisionScaleOverTimeChart({
   data: { date: string; scale: number }[];
 }) {
   return (
-    <ChartWrapper title="Vision Scale Over Time">
-      <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={data}>
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-          <YAxis domain={[1, 10]} tick={{ fontSize: 12 }} />
-          <Tooltip />
-          <Line
-            type="monotone"
-            dataKey="scale"
-            name="Vision Scale"
-            stroke="#ef4444"
-            strokeWidth={2}
-            dot={{ r: 4 }}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </ChartWrapper>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">Vision Scale Over Time</CardTitle>
+        <CardDescription>Patient-reported vision impact across calls</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer config={chartConfig} className="aspect-auto h-[300px] w-full">
+          <AreaChart accessibilityLayer data={data}>
+            <defs>
+              <linearGradient id="fillScale" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--color-scale)" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="var(--color-scale)" stopOpacity={0.05} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} />
+            <XAxis
+              dataKey="date"
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <YAxis
+              domain={[1, 10]}
+              tickLine={false}
+              axisLine={false}
+              tickMargin={8}
+            />
+            <ChartTooltip content={<ChartTooltipContent />} />
+            <Area
+              type="natural"
+              dataKey="scale"
+              stroke="var(--color-scale)"
+              strokeWidth={2}
+              fill="url(#fillScale)"
+              dot={{ r: 4, fill: "var(--color-scale)" }}
+            />
+          </AreaChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
   );
 }

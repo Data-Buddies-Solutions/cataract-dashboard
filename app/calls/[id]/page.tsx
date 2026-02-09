@@ -12,6 +12,21 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import {
+  Eye,
+  Glasses,
+  Sparkles,
+  Zap,
+  Heart,
+  Activity,
+  Stethoscope,
+  HelpCircle,
+  Car,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  AlertCircle,
+} from "lucide-react";
 import type {
   EventData,
   TranscriptTurn,
@@ -35,6 +50,14 @@ function criteriaResultStyle(result: string): { color: string; bg: string } {
   if (result === "failure")
     return { color: "text-red-700", bg: "bg-red-50 border-red-200" };
   return { color: "text-amber-700", bg: "bg-amber-50 border-amber-200" };
+}
+
+function criteriaIcon(result: string) {
+  if (result === "success")
+    return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+  if (result === "failure")
+    return <XCircle className="h-4 w-4 text-red-600" />;
+  return <AlertCircle className="h-4 w-4 text-amber-600" />;
 }
 
 function scaleColorClass(scale: number): string {
@@ -145,6 +168,12 @@ export default async function CallDetailPage({
   const patientName = patientNameEntry?.value || event.patient?.name || null;
   const sentimentValue = sentimentEntry?.value || null;
 
+  const bannerBorder = event.callSuccessful === true
+    ? "border-l-4 border-l-green-500"
+    : event.callSuccessful === false
+      ? "border-l-4 border-l-red-500"
+      : "";
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
       <Link
@@ -155,7 +184,7 @@ export default async function CallDetailPage({
       </Link>
 
       {/* Top Banner */}
-      <div className="mb-6 rounded-xl border bg-white p-6">
+      <div className={`mb-6 rounded-xl border bg-white p-6 ${bannerBorder}`}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
@@ -195,6 +224,19 @@ export default async function CallDetailPage({
         </div>
       </div>
 
+      {/* Call Synopsis - promoted to #1 position */}
+      {summary && (
+        <div className="mb-6 rounded-lg border border-l-4 border-l-blue-500 bg-blue-50/30 p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="h-4 w-4 text-blue-600" />
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+              Call Synopsis
+            </h2>
+          </div>
+          <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
+        </div>
+      )}
+
       {/* Key Metrics Row */}
       <section className="mb-6">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
@@ -209,9 +251,12 @@ export default async function CallDetailPage({
                 : "border-gray-200 bg-white"
             }`}
           >
-            <h3 className="text-xs font-medium uppercase text-gray-500">
-              Vision Impact
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <Eye className="h-3.5 w-3.5 text-gray-400" />
+              <h3 className="text-xs font-medium uppercase text-gray-500">
+                Vision Impact
+              </h3>
+            </div>
             <p
               className={`mt-1 text-3xl font-bold ${
                 event.visionScale != null
@@ -233,10 +278,13 @@ export default async function CallDetailPage({
           </div>
 
           {/* Glasses Preference */}
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <h3 className="text-xs font-medium uppercase text-gray-500">
-              Glasses Preference
-            </h3>
+          <div className="rounded-lg border border-gray-200 bg-blue-50/20 p-4">
+            <div className="flex items-center gap-1.5">
+              <Glasses className="h-3.5 w-3.5 text-gray-400" />
+              <h3 className="text-xs font-medium uppercase text-gray-500">
+                Glasses Preference
+              </h3>
+            </div>
             <p className="mt-1">
               {glassesEntry?.value ? (
                 <Badge variant="secondary" className="text-sm">
@@ -254,9 +302,12 @@ export default async function CallDetailPage({
 
           {/* Premium Lens Interest */}
           <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <h3 className="text-xs font-medium uppercase text-gray-500">
-              Premium Lens Interest
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-gray-400" />
+              <h3 className="text-xs font-medium uppercase text-gray-500">
+                Premium Lens Interest
+              </h3>
+            </div>
             <p className="mt-1">
               {premiumLensEntry?.value ? (
                 <PremiumLensBadge value={premiumLensEntry.value} />
@@ -268,9 +319,12 @@ export default async function CallDetailPage({
 
           {/* Femtosecond Laser */}
           <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <h3 className="text-xs font-medium uppercase text-gray-500">
-              Femtosecond Laser
-            </h3>
+            <div className="flex items-center gap-1.5">
+              <Zap className="h-3.5 w-3.5 text-gray-400" />
+              <h3 className="text-xs font-medium uppercase text-gray-500">
+                Femtosecond Laser
+              </h3>
+            </div>
             <p className="mt-1">
               {laserEntry?.value ? (
                 <Badge variant="outline" className="text-sm">
@@ -293,7 +347,8 @@ export default async function CallDetailPage({
           {/* Lifestyle & Hobbies */}
           <Card className="py-4">
             <CardHeader className="pb-0 pt-0">
-              <CardTitle className="text-sm font-medium text-gray-500">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-500">
+                <Heart className="h-3.5 w-3.5" />
                 Lifestyle & Hobbies
               </CardTitle>
             </CardHeader>
@@ -307,7 +362,8 @@ export default async function CallDetailPage({
           {/* Activities Affected */}
           <Card className="py-4">
             <CardHeader className="pb-0 pt-0">
-              <CardTitle className="text-sm font-medium text-gray-500">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-500">
+                <Activity className="h-3.5 w-3.5" />
                 Activities Affected
               </CardTitle>
             </CardHeader>
@@ -321,7 +377,8 @@ export default async function CallDetailPage({
           {/* Medical Conditions */}
           <Card className="py-4">
             <CardHeader className="pb-0 pt-0">
-              <CardTitle className="text-sm font-medium text-gray-500">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-500">
+                <Stethoscope className="h-3.5 w-3.5" />
                 Medical Conditions
               </CardTitle>
             </CardHeader>
@@ -335,7 +392,8 @@ export default async function CallDetailPage({
           {/* Patient Concerns & Questions */}
           <Card className="py-4">
             <CardHeader className="pb-0 pt-0">
-              <CardTitle className="text-sm font-medium text-gray-500">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-500">
+                <HelpCircle className="h-3.5 w-3.5" />
                 Concerns & Questions
               </CardTitle>
             </CardHeader>
@@ -349,7 +407,8 @@ export default async function CallDetailPage({
           {/* Driver Confirmed */}
           <Card className="py-4 sm:col-span-2">
             <CardHeader className="pb-0 pt-0">
-              <CardTitle className="text-sm font-medium text-gray-500">
+              <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-500">
+                <Car className="h-3.5 w-3.5" />
                 Driver / Transportation
               </CardTitle>
             </CardHeader>
@@ -364,16 +423,6 @@ export default async function CallDetailPage({
 
       <Separator className="my-6" />
 
-      {/* Transcript Summary */}
-      {summary && (
-        <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4">
-          <h2 className="mb-1 text-xs font-medium uppercase text-gray-500">
-            Summary
-          </h2>
-          <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
-        </div>
-      )}
-
       {/* Evaluation Criteria */}
       {evaluationCriteria.length > 0 && (
         <section className="mb-6">
@@ -387,9 +436,12 @@ export default async function CallDetailPage({
                   className={`rounded-lg border p-4 ${style.bg}`}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <h3 className={`text-sm font-medium ${style.color}`}>
-                      {formatLabel(item.criteria_id)}
-                    </h3>
+                    <div className="flex items-center gap-2">
+                      {criteriaIcon(item.result)}
+                      <h3 className={`text-sm font-medium ${style.color}`}>
+                        {formatLabel(item.criteria_id)}
+                      </h3>
+                    </div>
                     <span
                       className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold uppercase ${style.color}`}
                     >
@@ -406,37 +458,27 @@ export default async function CallDetailPage({
         </section>
       )}
 
-      {/* Call Stats */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-3">
-          <dt className="text-xs font-medium uppercase text-gray-500">
-            Duration
-          </dt>
-          <dd className="mt-1 text-lg font-semibold text-gray-900">
+      {/* Call Stats - demoted to subtle row */}
+      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-muted/50 px-4 py-3">
+        <div>
+          <dt className="text-xs text-muted-foreground">Duration</dt>
+          <dd className="text-sm font-medium">
             {duration != null ? formatDuration(duration) : "—"}
           </dd>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-3">
-          <dt className="text-xs font-medium uppercase text-gray-500">
-            Turns
-          </dt>
-          <dd className="mt-1 text-lg font-semibold text-gray-900">
-            {turnCount}
-          </dd>
+        <div>
+          <dt className="text-xs text-muted-foreground">Turns</dt>
+          <dd className="text-sm font-medium">{turnCount}</dd>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-3">
-          <dt className="text-xs font-medium uppercase text-gray-500">
-            LLM Cost
-          </dt>
-          <dd className="mt-1 text-lg font-semibold text-gray-900">
+        <div>
+          <dt className="text-xs text-muted-foreground">LLM Cost</dt>
+          <dd className="text-sm font-medium">
             {llmCost != null ? `$${llmCost.toFixed(4)}` : "—"}
           </dd>
         </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-3">
-          <dt className="text-xs font-medium uppercase text-gray-500">
-            Credits Used
-          </dt>
-          <dd className="mt-1 text-lg font-semibold text-gray-900">
+        <div>
+          <dt className="text-xs text-muted-foreground">Credits Used</dt>
+          <dd className="text-sm font-medium">
             {credits != null ? credits.toLocaleString() : "—"}
           </dd>
         </div>

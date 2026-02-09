@@ -1,0 +1,59 @@
+[ 1116853ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=_tdrf0Cj7QyBTOYMshT9Z' failed:  @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 1117865ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=_tdrf0Cj7QyBTOYMshT9Z' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 1121259ms] [ERROR] %c%s%c (node:25176) Warning: SECURITY WARNING: The SSL modes 'prefer', 'require', and 'verify-ca' are treated as aliases for 'verify-full'.
+In the next major version (pg-connection-string v3.0.0 and pg v9.0.0), these modes will adopt standard libpq semantics, which have weaker security guarantees.
+
+To prepare for this change:
+- If you want the current behavior, explicitly use 'sslmode=verify-full'
+- If you want libpq compatibility now, use 'uselibpqcompat=true&sslmode=require'
+
+See https://www.postgresql.org/docs/current/libpq-ssl.html for libpq SSL mode definitions.
+(Use `node --trace-warnings ...` to show where the warning was created) background: #e6e6e6;background: light-dark(rgba(0,0,0,0.1), rgba(255,255,255,0.25));color: #000000;color: light-dark(#000000, #ffffff);border-radius: 2px  Server   @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_f3530cac._.js:3127
+[ 1124485ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=V21uThXHZcvs7UKbYZQ-9' failed:  @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 1125490ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=V21uThXHZcvs7UKbYZQ-9' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 1126493ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=V21uThXHZcvs7UKbYZQ-9' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 1127495ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=V21uThXHZcvs7UKbYZQ-9' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 1128498ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=V21uThXHZcvs7UKbYZQ-9' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 1129501ms] [ERROR] WebSocket connection to 'ws://localhost:3000/_next/webpack-hmr?id=V21uThXHZcvs7UKbYZQ-9' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:3000/_next/static/chunks/node_modules_next_dist_client_17643121._.js:10878
+[ 1136588ms] Error: Hydration failed because the server rendered HTML didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <SegmentStateProvider>
+      <RenderFromTemplateContext>
+        <ScrollAndFocusHandler segmentPath={[...]}>
+          <InnerScrollAndFocusHandler segmentPath={[...]} focusAndScrollRef={{apply:false, ...}}>
+            <ErrorBoundary errorComponent={undefined} errorStyles={undefined} errorScripts={undefined}>
+              <LoadingBoundary name="cmle71aj30..." loading={null}>
+                <HTTPAccessFallbackBoundary notFound={undefined} forbidden={undefined} unauthorized={undefined}>
+                  <RedirectBoundary>
+                    <RedirectErrorBoundary router={{...}}>
+                      <InnerLayoutRouter url="/calls/cml..." tree={[...]} params={{id:"cmle71..."}} ...>
+                        <SegmentViewNode type="page" pagePath="calls/[id]...">
+                          <SegmentTrieNode>
+                          <CallDetailPage>
++                           <main className="mx-auto max-w-4xl px-4 py-8">
+-                           <a className="mb-6 inline-block text-sm text-blue-600 hover:underline" href="/">
+                        ...
+                      ...
+            ...
+      ...
+
+    at throwOnHydrationMismatch (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:3348:56)
+    at beginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:6775:918)
+    at replayBeginWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:9585:156)
+    at runWithFiberInDEV (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:965:74)
+    at replaySuspendedUnitOfWork (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:9567:20)
+    at renderRootConcurrent (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:9500:141)
+    at performWorkOnRoot (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:9068:150)
+    at performWorkOnRootViaSchedulerTask (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_react-dom_1e674e59._.js:10230:9)
+    at MessagePort.performWorkUntilDeadline (http://localhost:3000/_next/static/chunks/node_modules_next_dist_compiled_a0e4c7b4._.js:2647:64)

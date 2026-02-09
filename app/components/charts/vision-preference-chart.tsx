@@ -1,17 +1,36 @@
 "use client";
 
+import { useMemo } from "react";
+import { Pie, PieChart } from "recharts";
 import {
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-} from "recharts";
-import { ChartWrapper } from "../chart-wrapper";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  type ChartConfig,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
 import { EmptyState } from "../empty-state";
 
-const COLORS = ["#3b82f6", "#8b5cf6", "#14b8a6", "#f59e0b", "#ef4444", "#6366f1"];
+const PALETTE = [
+  "var(--medical-info)",
+  "var(--medical-purple)",
+  "var(--medical-success)",
+  "var(--medical-warning)",
+  "var(--medical-critical)",
+  "var(--medical-neutral)",
+];
+
+function truncate(str: string, max: number): string {
+  return str.length > max ? str.slice(0, max) + "..." : str;
+}
 
 export function VisionPreferenceChart({
   data,
@@ -20,33 +39,53 @@ export function VisionPreferenceChart({
 }) {
   const total = data.reduce((sum, d) => sum + d.value, 0);
 
+  const chartConfig = useMemo(() => {
+    const config: ChartConfig = {
+      value: { label: "Patients" },
+    };
+    data.forEach((d, i) => {
+      config[d.name] = {
+        label: truncate(d.name, 25),
+        color: PALETTE[i % PALETTE.length],
+      };
+    });
+    return config;
+  }, [data]);
+
   if (total === 0) {
     return <EmptyState label="Vision Preference Distribution" />;
   }
 
+  const chartData = data.map((d, i) => ({
+    ...d,
+    fill: PALETTE[i % PALETTE.length],
+  }));
+
   return (
-    <ChartWrapper title="Vision Preference Distribution">
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={100}
-            dataKey="value"
-            label={({ name, percent }) =>
-              `${name} ${((percent ?? 0) * 100).toFixed(0)}%`
-            }
-          >
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </ChartWrapper>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium">Vision Preference Distribution</CardTitle>
+        <CardDescription>Post-surgery vision goals reported by patients</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[300px]">
+          <PieChart accessibilityLayer>
+            <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+            <Pie
+              data={chartData}
+              dataKey="value"
+              nameKey="name"
+              innerRadius={60}
+              outerRadius={100}
+              strokeWidth={2}
+            />
+            <ChartLegend
+              content={<ChartLegendContent nameKey="name" />}
+              className="-translate-y-2 flex-wrap gap-2"
+            />
+          </PieChart>
+        </ChartContainer>
+      </CardContent>
+    </Card>
   );
 }

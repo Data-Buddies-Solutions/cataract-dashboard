@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { LocalTime } from "@/app/components/local-time";
-import { StatCard } from "@/app/components/stat-card";
+import { AnalyticsStatCard } from "@/app/components/analytics-stat-card";
+import { Phone, Eye, Calendar, CheckCircle2 } from "lucide-react";
 import { CallOutcomeBadge } from "@/app/components/call-outcome-badge";
 import { VisionScaleBadge } from "@/app/components/vision-scale-badge";
 import { VisionScaleOverTimeChart } from "./vision-scale-over-time-chart";
@@ -81,13 +82,34 @@ export default async function PatientDetailPage({
 
       {/* Stat Cards */}
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="Total Calls" value={String(totalCalls)} />
-        <StatCard label="Avg Vision Scale" value={String(avgScale)} />
-        <StatCard
+        <AnalyticsStatCard
+          label="Total Calls"
+          value={String(totalCalls)}
+          icon={Phone}
+          iconColorClass="bg-medical-info-light text-medical-info"
+          bgClass="bg-medical-info-light/30"
+        />
+        <AnalyticsStatCard
+          label="Avg Vision Scale"
+          value={String(avgScale)}
+          icon={Eye}
+          iconColorClass="bg-medical-warning-light text-medical-warning"
+          bgClass="bg-medical-warning-light/30"
+        />
+        <AnalyticsStatCard
           label="Most Recent Call"
           value={lastCall ? lastCall.createdAt.toLocaleDateString() : "—"}
+          icon={Calendar}
+          iconColorClass="bg-medical-purple-light text-medical-purple"
+          bgClass="bg-medical-purple-light/30"
         />
-        <StatCard label="Success Rate" value={successRate} />
+        <AnalyticsStatCard
+          label="Success Rate"
+          value={successRate}
+          icon={CheckCircle2}
+          iconColorClass="bg-medical-success-light text-medical-success"
+          bgClass="bg-medical-success-light/30"
+        />
       </div>
 
       {/* Vision Scale Over Time */}

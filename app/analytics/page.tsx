@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { StatCard } from "@/app/components/stat-card";
+import { AnalyticsStatCard } from "@/app/components/analytics-stat-card";
 import { CallVolumeChart } from "@/app/components/charts/call-volume-chart";
 import { SuccessRateChart } from "@/app/components/charts/success-rate-chart";
 import { VisionScaleDistribution } from "@/app/components/charts/vision-scale-distribution";
@@ -8,6 +8,13 @@ import { VisionPreferenceChart } from "@/app/components/charts/vision-preference
 import { CallOutcomesOverTime } from "@/app/components/charts/call-outcomes-over-time";
 import { DurationTrendChart } from "@/app/components/charts/duration-trend-chart";
 import { DataCollectionRateChart } from "@/app/components/charts/data-collection-rate-chart";
+import {
+  Phone,
+  CheckCircle2,
+  Clock,
+  Eye,
+  BarChart3,
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -188,8 +195,6 @@ export default async function AnalyticsPage() {
     visionScaleCount > 0
       ? (totalVisionScale / visionScaleCount).toFixed(1)
       : "—";
-  const mostCommonPref =
-    preferenceData.length > 0 ? preferenceData[0].name : "—";
   const dataCollectionRate =
     totalCalls > 0
       ? (
@@ -199,28 +204,77 @@ export default async function AnalyticsPage() {
         ).toFixed(0)
       : "0";
 
+  // Adaptive color for vision scale
+  const avgVisionNum = visionScaleCount > 0 ? totalVisionScale / visionScaleCount : 0;
+  const visionIconColor =
+    avgVisionNum <= 3
+      ? "bg-medical-success-light text-medical-success"
+      : avgVisionNum <= 6
+        ? "bg-medical-warning-light text-medical-warning"
+        : "bg-medical-critical-light text-medical-critical";
+  const visionBgClass =
+    avgVisionNum <= 3
+      ? "bg-medical-success-light/30"
+      : avgVisionNum <= 6
+        ? "bg-medical-warning-light/30"
+        : "bg-medical-critical-light/30";
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold">Analytics</h1>
-
-      {/* Summary Stats */}
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <StatCard label="Total Calls" value={String(totalCalls)} />
-        <StatCard label="Success Rate" value={`${successRate}%`} />
-        <StatCard label="Avg Duration" value={`${avgDuration.toFixed(1)}s`} />
-        <StatCard label="Avg Vision Scale" value={avgVisionScale} />
-        <StatCard label="Top Preference" value={mostCommonPref} />
-        <StatCard label="Data Collection" value={`${dataCollectionRate}%`} />
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Analytics</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Aggregate insights across all patient calls
+        </p>
       </div>
 
-      {/* Charts Grid */}
+      {/* Summary Stats */}
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <AnalyticsStatCard
+          label="Total Calls"
+          value={String(totalCalls)}
+          icon={Phone}
+          iconColorClass="bg-medical-info-light text-medical-info"
+          bgClass="bg-medical-info-light/30"
+        />
+        <AnalyticsStatCard
+          label="Success Rate"
+          value={`${successRate}%`}
+          icon={CheckCircle2}
+          iconColorClass="bg-medical-success-light text-medical-success"
+          bgClass="bg-medical-success-light/30"
+        />
+        <AnalyticsStatCard
+          label="Avg Duration"
+          value={`${avgDuration.toFixed(1)}s`}
+          icon={Clock}
+          iconColorClass="bg-medical-purple-light text-medical-purple"
+          bgClass="bg-medical-purple-light/30"
+        />
+        <AnalyticsStatCard
+          label="Avg Vision Scale"
+          value={avgVisionScale}
+          icon={Eye}
+          iconColorClass={visionIconColor}
+          bgClass={visionBgClass}
+        />
+        <AnalyticsStatCard
+          label="Data Collection"
+          value={`${dataCollectionRate}%`}
+          icon={BarChart3}
+          iconColorClass="bg-medical-info-light text-medical-info"
+          bgClass="bg-medical-info-light/30"
+        />
+      </div>
+
+      {/* Charts Grid - ordered by clinical importance */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
         <CallVolumeChart data={callVolumeData} />
         <SuccessRateChart data={successRateData} />
         <VisionScaleDistribution data={visionScaleData} />
+        <CallOutcomesOverTime data={outcomesOverTimeData} />
         <AffectedActivitiesChart data={activitiesData} />
         <VisionPreferenceChart data={preferenceData} />
-        <CallOutcomesOverTime data={outcomesOverTimeData} />
         <DurationTrendChart data={durationTrendData} />
         <DataCollectionRateChart data={dataCollectionRateData} />
       </div>
