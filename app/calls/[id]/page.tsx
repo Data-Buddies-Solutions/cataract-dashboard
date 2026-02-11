@@ -92,7 +92,7 @@ function getPremiumLensLabel(value: string): string {
   const lower = value.toLowerCase();
   if (lower.includes("yes") || lower.includes("interested") || lower.includes("high"))
     return "High Interest";
-  if (lower.includes("maybe") || lower.includes("unsure") || lower.includes("considering"))
+  if (lower.includes("maybe") || lower.includes("unsure") || lower.includes("considering") || lower.includes("moderate"))
     return "Considering";
   if (lower.includes("no") || lower.includes("not interested") || lower.includes("declined"))
     return "Not Interested";
@@ -170,7 +170,22 @@ export default async function CallDetailPage({
   const personalityEntry = personalityMatch?.entry;
   const occupationEntry = occupationMatch?.entry;
 
-  const patientName = patientNameMatch?.entry.value || event.patient?.name || null;
+  // Parse patient name — value may be JSON like {"patient_name": "Mike", "occupation": "retired"}
+  let patientName: string | null = null;
+  let parsedOccupation: string | null = null;
+  const rawNameValue = patientNameMatch?.entry.value;
+  if (rawNameValue) {
+    try {
+      const parsed = JSON.parse(rawNameValue);
+      patientName = parsed.patient_name || parsed.name || null;
+      parsedOccupation = parsed.occupation || null;
+    } catch {
+      patientName = rawNameValue;
+    }
+  }
+  patientName = patientName || event.patient?.name || null;
+  const occupationValue = parsedOccupation || (occupationEntry?.value !== rawNameValue ? occupationEntry?.value : null);
+
   const sentimentValue = sentimentMatch?.entry.value || null;
 
   const readinessLabel = readinessEntry?.value ? getReadinessLabel(readinessEntry.value) : null;
@@ -204,8 +219,8 @@ export default async function CallDetailPage({
           <h1 className="truncate text-base font-semibold sm:text-lg">
             {patientName || "Unknown Patient"}
           </h1>
-          {occupationEntry?.value && (
-            <span className="text-xs text-muted-foreground">{occupationEntry.value}</span>
+          {occupationValue && (
+            <span className="text-xs text-muted-foreground">{occupationValue}</span>
           )}
         </div>
         <span className="text-xs text-muted-foreground">&middot;</span>
@@ -263,7 +278,7 @@ export default async function CallDetailPage({
             <p className="mt-2 text-sm font-bold sm:mt-4 sm:text-lg">
               {readinessLabel ?? "Not assessed"}
             </p>
-            {readinessEntry?.value && !readinessLabel?.toLowerCase().includes(readinessEntry.value.toLowerCase()) && (
+            {readinessEntry?.value && !readinessEntry.value.toLowerCase().includes(readinessLabel?.toLowerCase() ?? "") && (
               <p className="mt-1.5 hidden text-xs leading-relaxed text-muted-foreground sm:block">
                 {readinessEntry.value}
               </p>
@@ -280,7 +295,7 @@ export default async function CallDetailPage({
             <p className="mt-2 text-sm font-bold sm:mt-4 sm:text-lg">
               {premiumLensLabel ?? "Not assessed"}
             </p>
-            {premiumLensEntry?.value && !premiumLensLabel?.toLowerCase().includes(premiumLensEntry.value.toLowerCase()) && (
+            {premiumLensEntry?.value && premiumLensEntry.value.split(/\s+/).length > 3 && !premiumLensEntry.value.toLowerCase().includes(premiumLensLabel?.toLowerCase() ?? "") && (
               <p className="mt-1.5 hidden text-xs leading-relaxed text-muted-foreground sm:block">
                 {premiumLensEntry.value}
               </p>
@@ -422,9 +437,9 @@ export default async function CallDetailPage({
                   </h3>
                 </div>
                 <div className="space-y-1 text-sm">
-                  {personalityEntry?.value && <p>{personalityEntry.value}</p>}
+                  {personalityEntry?.value && personalityEntry.value !== "null" && <p>{personalityEntry.value}</p>}
                   {sentimentValue && <p>{sentimentValue}</p>}
-                  {!personalityEntry?.value && !sentimentValue && (
+                  {(!personalityEntry?.value || personalityEntry.value === "null") && !sentimentValue && (
                     <p className="text-muted-foreground">—</p>
                   )}
                 </div>
