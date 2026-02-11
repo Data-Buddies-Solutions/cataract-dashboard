@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Fire-and-forget: send post-call emails and generate video
+  // Fire-and-forget: send post-call emails
   sendPostCallEmails(event.data as EventData, savedEvent.id).catch((err) =>
     console.error("Post-call email error:", err)
   );
