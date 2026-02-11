@@ -6,6 +6,7 @@ interface ExtractedPatientData {
   visionScale: number | null;
   activities: string | null;
   visionPreference: string | null;
+  patientEmail: string | null;
 }
 
 export function extractPatientData(data: EventData): ExtractedPatientData {
@@ -25,6 +26,7 @@ export function extractPatientData(data: EventData): ExtractedPatientData {
   let visionScale: number | null = null;
   let activities: string | null = null;
   let visionPreference: string | null = null;
+  let patientEmail: string | null = null;
 
   const dcr = data.analysis?.data_collection_results;
   if (dcr) {
@@ -48,6 +50,15 @@ export function extractPatientData(data: EventData): ExtractedPatientData {
       ) {
         activities = entry.value;
       } else if (
+        lowerKey.includes("email") ||
+        lowerKey.includes("e-mail") ||
+        (lowerKey.includes("mail") && lowerKey.includes("address"))
+      ) {
+        const emailValue = entry.value.trim();
+        if (emailValue.includes("@") && emailValue.includes(".")) {
+          patientEmail = emailValue;
+        }
+      } else if (
         lowerKey.includes("preference") ||
         lowerKey.includes("goal") ||
         (lowerKey.includes("vision") && (lowerKey.includes("after") || lowerKey.includes("post") || lowerKey.includes("want") || lowerKey.includes("hope")))
@@ -63,5 +74,6 @@ export function extractPatientData(data: EventData): ExtractedPatientData {
     visionScale,
     activities,
     visionPreference,
+    patientEmail,
   };
 }

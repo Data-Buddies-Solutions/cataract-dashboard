@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { constructWebhookEvent } from "@/lib/verify-signature";
 import { extractPatientData } from "@/lib/extract-patient-data";
+import { sendPostCallEmails } from "@/lib/send-post-call-emails";
 import type { EventData } from "@/lib/types";
 
 export async function GET() {
@@ -56,17 +57,19 @@ export async function POST(request: NextRequest) {
     visionScale: extracted.visionScale,
     activities: extracted.activities,
     visionPreference: extracted.visionPreference,
+    patientEmail: extracted.patientEmail,
   };
 
+  let savedEvent;
   try {
     if (conversationId) {
-      await prisma.webhookEvent.upsert({
+      savedEvent = await prisma.webhookEvent.upsert({
         where: { conversationId },
         create: payload,
         update: payload,
       });
     } else {
-      await prisma.webhookEvent.create({ data: payload });
+      savedEvent = await prisma.webhookEvent.create({ data: payload });
     }
   } catch (err) {
     console.error("Failed to store webhook event:", err);
@@ -75,6 +78,11 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+
+  // Fire-and-forget: send post-call emails and generate video
+  sendPostCallEmails(event.data as EventData, savedEvent.id).catch((err) =>
+    console.error("Post-call email error:", err)
+  );
 
   return NextResponse.json({ received: true });
 }

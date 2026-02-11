@@ -11,6 +11,7 @@ model Patient {
   id        String   @id @default(cuid())
   name      String
   phone     String?
+  email     String?
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -33,6 +34,13 @@ model WebhookEvent {
   visionScale     Int?
   activities      String?
   visionPreference String?
+
+  // Post-call communication
+  patientEmail       String?
+  patientEmailSentAt DateTime?
+  doctorEmailSentAt  DateTime?
+  videoUrl           String?
+  videoStatus        String?
 
   // Patient relationship
   patientId       String?

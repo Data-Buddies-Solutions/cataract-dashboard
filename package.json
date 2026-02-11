@@ -12,19 +12,23 @@
     "db:generate": "bunx prisma generate"
   },
   "dependencies": {
+    "@google/genai": "^1.40.0",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "7",
+    "@react-email/components": "^1.0.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.4",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
+    "pdf-lib": "^1.17.1",
     "pg": "^8.18.0",
     "prisma": "7",
     "radix-ui": "^1.4.3",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "recharts": "2.15.4",
+    "resend": "^6.9.2",
     "tailwind-merge": "^3.4.0"
   },
   "devDependencies": {

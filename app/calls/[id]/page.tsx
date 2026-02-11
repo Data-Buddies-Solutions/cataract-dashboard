@@ -27,6 +27,7 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react";
+import { PostCallStatus } from "@/app/components/post-call-status";
 import type {
   EventData,
   TranscriptTurn,
@@ -236,6 +237,18 @@ export default async function CallDetailPage({
           <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
         </div>
       )}
+
+      {/* Post-Call Communications */}
+      <div className="mb-6">
+        <PostCallStatus
+          callId={event.id}
+          patientEmail={event.patientEmail}
+          patientEmailSentAt={event.patientEmailSentAt?.toISOString() ?? null}
+          doctorEmailSentAt={event.doctorEmailSentAt?.toISOString() ?? null}
+          videoStatus={event.videoStatus}
+          videoUrl={event.videoUrl}
+        />
+      </div>
 
       {/* Key Metrics Row */}
       <section className="mb-6">
