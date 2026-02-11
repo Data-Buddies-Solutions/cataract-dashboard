@@ -112,11 +112,7 @@ export async function sendPostCallEmails(
   const visionPreference = findEntry(
     dcr,
     "preference",
-    "goal",
-    "after",
-    "post",
-    "want",
-    "hope"
+    "goal"
   );
   const callSummary = eventData.analysis?.transcript_summary ?? null;
   const duration = eventData.metadata?.call_duration_secs;

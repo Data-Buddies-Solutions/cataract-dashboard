@@ -5,12 +5,7 @@ import { LocalTime } from "@/app/components/local-time";
 import { CallOutcomeBadge } from "@/app/components/call-outcome-badge";
 import { PatientTagForm } from "@/app/components/patient-tag-form";
 import { Badge } from "@/components/ui/badge";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import {
   Eye,
@@ -18,16 +13,17 @@ import {
   Sparkles,
   Zap,
   Heart,
-  Activity,
   Stethoscope,
   HelpCircle,
-  Car,
   FileText,
   CheckCircle2,
   XCircle,
   AlertCircle,
+  Target,
+  Brain,
 } from "lucide-react";
 import { PostCallStatus } from "@/app/components/post-call-status";
+import { TranscriptTabs } from "./transcript-tabs";
 import type {
   EventData,
   TranscriptTurn,
@@ -61,18 +57,6 @@ function criteriaIcon(result: string) {
   return <AlertCircle className="h-4 w-4 text-amber-600" />;
 }
 
-function scaleColorClass(scale: number): string {
-  if (scale <= 3) return "text-green-700";
-  if (scale <= 6) return "text-amber-600";
-  return "text-red-700";
-}
-
-function scaleColorBg(scale: number): string {
-  if (scale <= 3) return "bg-green-50 border-green-200";
-  if (scale <= 6) return "bg-amber-50 border-amber-200";
-  return "bg-red-50 border-red-200";
-}
-
 function sentimentBadgeClass(sentiment: string): string {
   const s = sentiment.toLowerCase();
   if (s.includes("positive") || s.includes("happy") || s.includes("satisfied"))
@@ -87,14 +71,146 @@ function sentimentBadgeClass(sentiment: string): string {
 function findDataCollectionEntry(
   dcr: Record<string, DataCollectionEntry>,
   ...keywords: string[]
-): DataCollectionEntry | undefined {
+): { key: string; entry: DataCollectionEntry } | undefined {
   for (const [key, entry] of Object.entries(dcr)) {
     const lowerKey = key.toLowerCase();
     if (keywords.some((kw) => lowerKey.includes(kw))) {
-      return entry;
+      return { key, entry };
     }
   }
   return undefined;
+}
+
+function findUnmatchedEntries(
+  dcr: Record<string, DataCollectionEntry>,
+  matchedKeys: Set<string>
+): { key: string; entry: DataCollectionEntry }[] {
+  return Object.entries(dcr)
+    .filter(([key]) => !matchedKeys.has(key))
+    .map(([key, entry]) => ({ key, entry }));
+}
+
+/* ── Readiness helpers ── */
+
+function getReadinessLevel(value: string): {
+  label: string;
+  color: string;
+  bg: string;
+} {
+  const lower = value.toLowerCase();
+  if (
+    lower.includes("ready") ||
+    lower.includes("scheduled") ||
+    lower.includes("decided") ||
+    lower.includes("yes")
+  )
+    return {
+      label: "Ready",
+      color: "text-medical-success",
+      bg: "bg-medical-success-light",
+    };
+  if (
+    lower.includes("considering") ||
+    lower.includes("leaning") ||
+    lower.includes("likely") ||
+    lower.includes("soon")
+  )
+    return {
+      label: "Leaning Yes",
+      color: "text-medical-warning",
+      bg: "bg-medical-warning-light",
+    };
+  if (
+    lower.includes("not ready") ||
+    lower.includes("undecided") ||
+    lower.includes("unsure") ||
+    lower.includes("no")
+  )
+    return {
+      label: "Not Ready",
+      color: "text-medical-critical",
+      bg: "bg-medical-critical-light",
+    };
+  return {
+    label: "Unknown",
+    color: "text-medical-neutral",
+    bg: "bg-medical-neutral-light",
+  };
+}
+
+/* ── Premium lens helpers ── */
+
+function getPremiumLensLevel(value: string): {
+  label: string;
+  color: string;
+  bg: string;
+} {
+  const lower = value.toLowerCase();
+  if (
+    lower.includes("yes") ||
+    lower.includes("interested") ||
+    lower.includes("high")
+  )
+    return {
+      label: "High Interest",
+      color: "text-medical-success",
+      bg: "bg-medical-success-light",
+    };
+  if (
+    lower.includes("maybe") ||
+    lower.includes("unsure") ||
+    lower.includes("considering")
+  )
+    return {
+      label: "Considering",
+      color: "text-medical-warning",
+      bg: "bg-medical-warning-light",
+    };
+  if (
+    lower.includes("no") ||
+    lower.includes("not interested") ||
+    lower.includes("declined")
+  )
+    return {
+      label: "Not Interested",
+      color: "text-medical-critical",
+      bg: "bg-medical-critical-light",
+    };
+  return {
+    label: "Unknown",
+    color: "text-medical-neutral",
+    bg: "bg-medical-neutral-light",
+  };
+}
+
+/* ── Vision Impact helpers ── */
+
+function visionSeverityColor(scale: number): {
+  text: string;
+  indicator: string;
+  bg: string;
+  label: string;
+} {
+  if (scale <= 3)
+    return {
+      text: "text-medical-success",
+      indicator: "[&_[data-slot=progress-indicator]]:bg-medical-success",
+      bg: "bg-medical-success-light",
+      label: "Mild",
+    };
+  if (scale <= 6)
+    return {
+      text: "text-medical-warning",
+      indicator: "[&_[data-slot=progress-indicator]]:bg-medical-warning",
+      bg: "bg-medical-warning-light",
+      label: "Moderate",
+    };
+  return {
+    text: "text-medical-critical",
+    indicator: "[&_[data-slot=progress-indicator]]:bg-medical-critical",
+    bg: "bg-medical-critical-light",
+    label: "Severe",
+  };
 }
 
 export default async function CallDetailPage({
@@ -128,95 +244,124 @@ export default async function CallDetailPage({
       ) as EvaluationCriteriaEntry[])
     : [];
 
-  // Extract all data collection entries
-  const visionScaleEntry = findDataCollectionEntry(
-    dcr, "scale", "impact", "rating", "score"
-  );
-  const activitiesEntry = findDataCollectionEntry(
+  // Data collection entries — each returns { key, entry } or undefined
+  const activitiesMatch = findDataCollectionEntry(
     dcr, "activit", "daily", "affected", "struggle", "difficult", "functional", "demands", "limitation"
   );
-  const preferenceEntry = findDataCollectionEntry(
-    dcr, "preference", "goal", "after", "post", "want", "hope"
-  );
-  const hobbiesEntry = findDataCollectionEntry(
+  const hobbiesMatch = findDataCollectionEntry(
     dcr, "hobby", "hobbies", "lifestyle", "leisure"
   );
-  const glassesEntry = findDataCollectionEntry(
+  const glassesMatch = findDataCollectionEntry(
     dcr, "glass", "independence", "spectacle"
   );
-  const premiumLensEntry = findDataCollectionEntry(
+  const preferenceMatch = findDataCollectionEntry(
+    dcr, "preference", "goal"
+  );
+  const premiumLensMatch = findDataCollectionEntry(
     dcr, "premium", "lens interest", "iol", "multifocal", "toric"
   );
-  const laserEntry = findDataCollectionEntry(
+  const laserMatch = findDataCollectionEntry(
     dcr, "femtosecond", "laser"
   );
-  const medicalEntry = findDataCollectionEntry(
+  const medicalMatch = findDataCollectionEntry(
     dcr, "medical", "condition", "health", "medication", "surgical risk", "ocular"
   );
-  const concernsEntry = findDataCollectionEntry(
+  const concernsMatch = findDataCollectionEntry(
     dcr, "concern", "question", "nervous", "worry", "fear"
   );
-  const sentimentEntry = findDataCollectionEntry(
+  const sentimentMatch = findDataCollectionEntry(
     dcr, "sentiment", "mood", "tone"
   );
-  const patientNameEntry = findDataCollectionEntry(
+  const patientNameMatch = findDataCollectionEntry(
     dcr, "patient name", "name"
   );
-  const driverEntry = findDataCollectionEntry(
-    dcr, "driver", "ride", "transport", "accompan"
+  const readinessMatch = findDataCollectionEntry(
+    dcr, "readi", "ready", "timeline", "decision", "schedule", "stage"
+  );
+  const personalityMatch = findDataCollectionEntry(
+    dcr, "personality", "tolerance", "temperament"
+  );
+  const occupationMatch = findDataCollectionEntry(
+    dcr, "occupation", "job", "profession"
+  );
+  const emailMatch = findDataCollectionEntry(
+    dcr, "email", "e-mail"
   );
 
-  const patientName = patientNameEntry?.value || event.patient?.name || null;
-  const sentimentValue = sentimentEntry?.value || null;
+  // Collect matched keys so we can surface anything unmatched
+  const matchedKeys = new Set(
+    [
+      activitiesMatch, hobbiesMatch, glassesMatch, preferenceMatch,
+      premiumLensMatch, laserMatch, medicalMatch, concernsMatch,
+      sentimentMatch, patientNameMatch, readinessMatch, personalityMatch,
+      occupationMatch, emailMatch,
+    ]
+      .filter(Boolean)
+      .map((m) => m!.key)
+  );
+  const unmatchedEntries = findUnmatchedEntries(dcr, matchedKeys);
 
-  const bannerBorder = event.callSuccessful === true
-    ? "border-l-4 border-l-green-500"
-    : event.callSuccessful === false
-      ? "border-l-4 border-l-red-500"
-      : "";
+  // Convenience accessors
+  const activitiesEntry = activitiesMatch?.entry;
+  const hobbiesEntry = hobbiesMatch?.entry;
+  const glassesEntry = glassesMatch?.entry;
+  const preferenceEntry = preferenceMatch?.entry;
+  const premiumLensEntry = premiumLensMatch?.entry;
+  const laserEntry = laserMatch?.entry;
+  const medicalEntry = medicalMatch?.entry;
+  const concernsEntry = concernsMatch?.entry;
+  const readinessEntry = readinessMatch?.entry;
+  const personalityEntry = personalityMatch?.entry;
+  const occupationEntry = occupationMatch?.entry;
+
+  const patientName = patientNameMatch?.entry.value || event.patient?.name || null;
+  const sentimentValue = sentimentMatch?.entry.value || null;
+
+  // Decision dashboard values
+  const readiness = readinessEntry?.value
+    ? getReadinessLevel(readinessEntry.value)
+    : null;
+  const premiumLens = premiumLensEntry?.value
+    ? getPremiumLensLevel(premiumLensEntry.value)
+    : null;
+  const visionScale = event.visionScale;
+  const visionSeverity = visionScale != null ? visionSeverityColor(visionScale) : null;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
+    <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
       <Link
         href="/"
-        className="mb-6 inline-block text-sm text-blue-600 hover:underline"
+        className="mb-4 inline-block text-sm text-blue-600 hover:underline sm:mb-6"
       >
         &larr; Back to calls
       </Link>
 
-      {/* Top Banner */}
-      <div className={`mb-6 rounded-xl border bg-white p-6 ${bannerBorder}`}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              {patientName || "Unknown Patient"}
-            </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-500">
-              <LocalTime
-                date={new Date(event.eventTimestamp * 1000).toISOString()}
-              />
-              {duration != null && (
-                <>
-                  <span>&middot;</span>
-                  <span>{formatDuration(duration)}</span>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {sentimentValue && (
-              <span
-                className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${sentimentBadgeClass(sentimentValue)}`}
-              >
-                {sentimentValue}
-              </span>
-            )}
-            <CallOutcomeBadge successful={event.callSuccessful} />
-          </div>
-        </div>
-
-        {/* Patient tag */}
-        <div className="mt-4">
+      {/* ── Section 1: Patient Header Banner ── */}
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border bg-white px-4 py-2.5 sm:mb-6">
+        <h1 className="truncate text-base font-semibold text-gray-900 sm:text-lg">
+          {patientName || "Unknown Patient"}
+        </h1>
+        <span className="text-xs text-gray-400">&middot;</span>
+        <span className="text-xs text-gray-500">
+          <LocalTime
+            date={new Date(event.eventTimestamp * 1000).toISOString()}
+          />
+        </span>
+        {duration != null && (
+          <>
+            <span className="text-xs text-gray-400">&middot;</span>
+            <span className="text-xs text-gray-500">{formatDuration(duration)}</span>
+          </>
+        )}
+        {sentimentValue && (
+          <span
+            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${sentimentBadgeClass(sentimentValue)}`}
+          >
+            {sentimentValue}
+          </span>
+        )}
+        <CallOutcomeBadge successful={event.callSuccessful} />
+        <div className="ml-auto">
           <PatientTagForm
             callId={event.id}
             currentPatientId={event.patientId}
@@ -225,226 +370,226 @@ export default async function CallDetailPage({
         </div>
       </div>
 
-      {/* Call Synopsis - promoted to #1 position */}
-      {summary && (
-        <div className="mb-6 rounded-lg border border-l-4 border-l-blue-500 bg-blue-50/30 p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <FileText className="h-4 w-4 text-blue-600" />
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-              Call Synopsis
-            </h2>
-          </div>
-          <p className="text-sm text-gray-700 leading-relaxed">{summary}</p>
-        </div>
-      )}
-
-      {/* Post-Call Communications */}
-      <div className="mb-6">
-        <PostCallStatus
-          callId={event.id}
-          patientEmail={event.patientEmail}
-          patientEmailSentAt={event.patientEmailSentAt?.toISOString() ?? null}
-          doctorEmailSentAt={event.doctorEmailSentAt?.toISOString() ?? null}
-        />
-      </div>
-
-      {/* Key Metrics Row */}
-      <section className="mb-6">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
-          Key Metrics
+      {/* ── Section 2: Decision Dashboard ── */}
+      <section className="mb-4 sm:mb-8">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:mb-3 sm:text-sm">
+          Decision Dashboard
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {/* Vision Impact */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          {/* Surgical Readiness */}
           <div
-            className={`rounded-lg border p-4 ${
-              event.visionScale != null
-                ? scaleColorBg(event.visionScale)
-                : "border-gray-200 bg-white"
-            }`}
+            className={`rounded-xl border p-3 shadow-sm sm:p-6 ${readiness?.bg ?? "bg-medical-neutral-light"}`}
           >
-            <div className="flex items-center gap-1.5">
-              <Eye className="h-3.5 w-3.5 text-gray-400" />
-              <h3 className="text-xs font-medium uppercase text-gray-500">
-                Vision Impact
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Target className="hidden h-4 w-4 text-gray-500 sm:block" />
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 sm:text-xs">
+                Surgical Readiness
               </h3>
             </div>
-            <p
-              className={`mt-1 text-3xl font-bold ${
-                event.visionScale != null
-                  ? scaleColorClass(event.visionScale)
-                  : "text-gray-400"
-              }`}
-            >
-              {event.visionScale != null ? (
-                <>
-                  {event.visionScale}
-                  <span className="text-base font-normal text-gray-400">
-                    /10
-                  </span>
-                </>
+            <div className="mt-2 sm:mt-4">
+              {readiness ? (
+                <span
+                  className={`inline-flex rounded-full bg-white/60 px-2 py-0.5 text-xs font-bold sm:px-4 sm:py-1.5 sm:text-lg ${readiness.color}`}
+                >
+                  {readiness.label}
+                </span>
               ) : (
-                "—"
+                <span className="text-xs font-bold text-gray-400 sm:text-lg">Not assessed</span>
               )}
-            </p>
-          </div>
-
-          {/* Glasses Preference */}
-          <div className="rounded-lg border border-gray-200 bg-blue-50/20 p-4">
-            <div className="flex items-center gap-1.5">
-              <Glasses className="h-3.5 w-3.5 text-gray-400" />
-              <h3 className="text-xs font-medium uppercase text-gray-500">
-                Glasses Preference
-              </h3>
             </div>
-            <p className="mt-1">
-              {glassesEntry?.value ? (
-                <Badge variant="secondary" className="text-sm">
-                  {glassesEntry.value}
-                </Badge>
-              ) : preferenceEntry?.value ? (
-                <Badge variant="secondary" className="text-sm">
-                  {preferenceEntry.value}
-                </Badge>
-              ) : (
-                <span className="text-sm text-gray-400">—</span>
-              )}
-            </p>
+            {readinessEntry?.value && readiness?.label !== readinessEntry.value && (
+              <p className="mt-1.5 hidden text-xs leading-relaxed text-gray-500 sm:block">
+                {readinessEntry.value}
+              </p>
+            )}
           </div>
 
           {/* Premium Lens Interest */}
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-1.5">
-              <Sparkles className="h-3.5 w-3.5 text-gray-400" />
-              <h3 className="text-xs font-medium uppercase text-gray-500">
-                Premium Lens Interest
+          <div
+            className={`rounded-xl border p-3 shadow-sm sm:p-6 ${premiumLens?.bg ?? "bg-medical-neutral-light"}`}
+          >
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Sparkles className="hidden h-4 w-4 text-gray-500 sm:block" />
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 sm:text-xs">
+                Premium Lens
               </h3>
             </div>
-            <p className="mt-1">
-              {premiumLensEntry?.value ? (
-                <PremiumLensBadge value={premiumLensEntry.value} />
+            <div className="mt-2 sm:mt-4">
+              {premiumLens ? (
+                <span
+                  className={`inline-flex rounded-full bg-white/60 px-2 py-0.5 text-xs font-bold sm:px-4 sm:py-1.5 sm:text-lg ${premiumLens.color}`}
+                >
+                  {premiumLens.label}
+                </span>
               ) : (
-                <span className="text-sm text-gray-400">—</span>
+                <span className="text-xs font-bold text-gray-400 sm:text-lg">Not assessed</span>
               )}
-            </p>
+            </div>
+            {premiumLensEntry?.value && (
+              <p className="mt-1.5 hidden text-xs leading-relaxed text-gray-500 sm:block">
+                {premiumLensEntry.value}
+              </p>
+            )}
           </div>
 
-          {/* Femtosecond Laser */}
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center gap-1.5">
-              <Zap className="h-3.5 w-3.5 text-gray-400" />
-              <h3 className="text-xs font-medium uppercase text-gray-500">
-                Femtosecond Laser
+          {/* Vision Impact Score */}
+          <div
+            className={`rounded-xl border p-3 shadow-sm sm:p-6 ${visionSeverity?.bg ?? "bg-medical-neutral-light"}`}
+          >
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Eye className="hidden h-4 w-4 text-gray-500 sm:block" />
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 sm:text-xs">
+                Vision Impact
               </h3>
             </div>
-            <p className="mt-1">
-              {laserEntry?.value ? (
-                <Badge variant="outline" className="text-sm">
-                  {laserEntry.value}
-                </Badge>
-              ) : (
-                <span className="text-sm text-gray-400">—</span>
-              )}
-            </p>
+            {visionScale != null && visionSeverity ? (
+              <>
+                <div className="mt-2 flex items-baseline gap-1 sm:mt-3 sm:gap-2">
+                  <span className={`text-2xl font-bold sm:text-4xl ${visionSeverity.text}`}>
+                    {visionScale}
+                  </span>
+                  <span className="text-[10px] font-medium text-gray-400 sm:text-sm">/10</span>
+                  <Badge
+                    variant="outline"
+                    className={`ml-auto hidden text-xs sm:inline-flex ${visionSeverity.text}`}
+                  >
+                    {visionSeverity.label}
+                  </Badge>
+                </div>
+                <Progress
+                  value={visionScale * 10}
+                  className={`mt-2 h-1.5 sm:mt-3 sm:h-2.5 ${visionSeverity.indicator}`}
+                />
+              </>
+            ) : (
+              <p className="mt-2 text-lg font-bold text-gray-400 sm:mt-4">—</p>
+            )}
           </div>
         </div>
       </section>
 
-      {/* Details Section */}
-      <section className="mb-6">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
-          Details
+      {/* ── Section 3: Patient Profile ── */}
+      <section className="mb-4 sm:mb-8">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:mb-3 sm:text-sm">
+          Patient Profile
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {/* Lifestyle & Hobbies */}
-          <Card className="py-4">
-            <CardHeader className="pb-0 pt-0">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                <Heart className="h-3.5 w-3.5" />
-                Lifestyle & Hobbies
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-900">
-                {hobbiesEntry?.value || "—"}
-              </p>
-            </CardContent>
-          </Card>
+        <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+          {/* Lifestyle & Activities */}
+          <div className="rounded-xl border bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-2 flex items-center gap-2">
+              <Heart className="h-4 w-4 text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-700">
+                Lifestyle & Activities
+              </h3>
+            </div>
+            <div className="space-y-1.5 text-sm text-gray-600">
+              {hobbiesEntry?.value && (
+                <p>{hobbiesEntry.value}</p>
+              )}
+              {(activitiesEntry?.value || event.activities) && (
+                <p>{activitiesEntry?.value || event.activities}</p>
+              )}
+              {!hobbiesEntry?.value && !activitiesEntry?.value && !event.activities && (
+                <p className="text-gray-400">—</p>
+              )}
+            </div>
+          </div>
 
-          {/* Activities Affected */}
-          <Card className="py-4">
-            <CardHeader className="pb-0 pt-0">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                <Activity className="h-3.5 w-3.5" />
-                Activities Affected
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-900">
-                {activitiesEntry?.value || event.activities || "—"}
-              </p>
-            </CardContent>
-          </Card>
+          {/* Personality & Sentiment */}
+          <div className="rounded-xl border bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-2 flex items-center gap-2">
+              <Brain className="h-4 w-4 text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-700">
+                Personality & Sentiment
+              </h3>
+            </div>
+            <div className="space-y-1.5 text-sm text-gray-600">
+              {personalityEntry?.value && (
+                <p>{personalityEntry.value}</p>
+              )}
+              {sentimentValue && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-500">Sentiment:</span>
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium ${sentimentBadgeClass(sentimentValue)}`}
+                  >
+                    {sentimentValue}
+                  </span>
+                </div>
+              )}
+              {!personalityEntry?.value && !sentimentValue && (
+                <p className="text-gray-400">—</p>
+              )}
+            </div>
+          </div>
 
-          {/* Medical Conditions */}
-          <Card className="py-4">
-            <CardHeader className="pb-0 pt-0">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                <Stethoscope className="h-3.5 w-3.5" />
-                Medical Conditions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-900">
-                {medicalEntry?.value || "—"}
-              </p>
-            </CardContent>
-          </Card>
+          {/* Medical History & Risk */}
+          <div className="rounded-xl border bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-2 flex items-center gap-2">
+              <Stethoscope className="h-4 w-4 text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-700">
+                Medical History & Risk
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              {medicalEntry?.value || <span className="text-gray-400">—</span>}
+            </p>
+          </div>
 
-          {/* Patient Concerns & Questions */}
-          <Card className="py-4">
-            <CardHeader className="pb-0 pt-0">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                <HelpCircle className="h-3.5 w-3.5" />
+          {/* Concerns & Questions */}
+          <div className="rounded-xl border bg-white p-4 shadow-sm sm:p-5">
+            <div className="mb-2 flex items-center gap-2">
+              <HelpCircle className="h-4 w-4 text-gray-400" />
+              <h3 className="text-sm font-semibold text-gray-700">
                 Concerns & Questions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-900">
-                {concernsEntry?.value || "—"}
-              </p>
-            </CardContent>
-          </Card>
-
-          {/* Driver Confirmed */}
-          <Card className="py-4 sm:col-span-2">
-            <CardHeader className="pb-0 pt-0">
-              <CardTitle className="flex items-center gap-2 text-sm font-medium text-gray-500">
-                <Car className="h-3.5 w-3.5" />
-                Driver / Transportation
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-900">
-                {driverEntry?.value || "—"}
-              </p>
-            </CardContent>
-          </Card>
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              {concernsEntry?.value || <span className="text-gray-400">—</span>}
+            </p>
+          </div>
         </div>
       </section>
 
-      <Separator className="my-6" />
+      {/* ── Section 4: Consultation Details ── */}
+      <section className="mb-4 sm:mb-8">
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:mb-3 sm:text-sm">
+          Consultation Details
+        </h2>
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border bg-white px-4 py-3 sm:gap-4 sm:px-5 sm:py-4">
+          <div className="flex items-center gap-2">
+            <Glasses className="h-4 w-4 text-gray-400" />
+            <span className="text-xs font-medium text-gray-500">Glasses</span>
+            <Badge variant="secondary" className="text-xs">
+              {glassesEntry?.value || preferenceEntry?.value || "—"}
+            </Badge>
+          </div>
 
-      {/* Evaluation Criteria */}
+          <Separator orientation="vertical" className="h-5" />
+
+          <div className="flex items-center gap-2">
+            <Zap className="h-4 w-4 text-gray-400" />
+            <span className="text-xs font-medium text-gray-500">Femtosecond Laser</span>
+            <Badge variant="secondary" className="text-xs">
+              {laserEntry?.value || "—"}
+            </Badge>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 5: AI Evaluation ── */}
       {evaluationCriteria.length > 0 && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold">Evaluation Criteria</h2>
-          <div className="space-y-3">
+        <section className="mb-4 sm:mb-8">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:mb-3 sm:text-sm">
+            AI Evaluation
+          </h2>
+          <div className="space-y-2 sm:space-y-3">
             {evaluationCriteria.map((item) => {
               const style = criteriaResultStyle(item.result);
               return (
                 <div
                   key={item.criteria_id}
-                  className={`rounded-lg border p-4 ${style.bg}`}
+                  className={`rounded-lg border p-3 sm:p-4 ${style.bg}`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -459,7 +604,7 @@ export default async function CallDetailPage({
                       {item.result}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+                  <p className="mt-2 text-sm leading-relaxed text-gray-600">
                     {item.rationale}
                   </p>
                 </div>
@@ -469,105 +614,61 @@ export default async function CallDetailPage({
         </section>
       )}
 
-      {/* Call Stats - demoted to subtle row */}
-      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-muted/50 px-4 py-3">
-        <div>
-          <dt className="text-xs text-muted-foreground">Duration</dt>
-          <dd className="text-sm font-medium">
-            {duration != null ? formatDuration(duration) : "—"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Turns</dt>
-          <dd className="text-sm font-medium">{turnCount}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">LLM Cost</dt>
-          <dd className="text-sm font-medium">
-            {llmCost != null ? `$${llmCost.toFixed(4)}` : "—"}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Credits Used</dt>
-          <dd className="text-sm font-medium">
-            {credits != null ? credits.toLocaleString() : "—"}
-          </dd>
-        </div>
-      </div>
-
-      {/* Transcript */}
-      {transcript && transcript.length > 0 && (
-        <section className="mb-6">
-          <h2 className="mb-3 text-lg font-semibold">Transcript</h2>
-          <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
-            {transcript.map((turn, i) => (
-              <div
-                key={i}
-                className={`flex flex-col ${
-                  turn.role === "agent" ? "items-start" : "items-end"
-                }`}
-              >
-                <span className="mb-0.5 text-xs font-medium uppercase text-gray-400">
-                  {turn.role}
-                  {turn.time_in_call_secs != null &&
-                    ` (${turn.time_in_call_secs}s)`}
-                </span>
-                <div
-                  className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
-                    turn.role === "agent"
-                      ? "bg-gray-100 text-gray-800"
-                      : "bg-blue-600 text-white"
-                  }`}
-                >
-                  {turn.message}
-                </div>
+      {/* ── Unmatched Data Collection Entries ── */}
+      {unmatchedEntries.length > 0 && (
+        <section className="mb-4 sm:mb-8">
+          <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500 sm:mb-3 sm:text-sm">
+            Other Collected Data
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
+            {unmatchedEntries.map(({ key, entry }) => (
+              <div key={key} className="rounded-xl border bg-white p-4 shadow-sm sm:p-5">
+                <h3 className="mb-1.5 text-sm font-semibold text-gray-700">
+                  {formatLabel(key)}
+                </h3>
+                <p className="text-sm text-gray-600">{entry.value || "—"}</p>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* Raw Payload */}
-      <details className="mb-6">
-        <summary className="cursor-pointer text-lg font-semibold text-gray-700 hover:text-gray-900">
-          Raw Payload
-        </summary>
-        <pre className="mt-3 overflow-x-auto rounded-lg border border-gray-200 bg-gray-900 p-4 text-sm text-green-400">
-          {JSON.stringify(event.data, null, 2)}
-        </pre>
-      </details>
+      {/* ── Section 6: Call Synopsis ── */}
+      {summary && (
+        <div className="mb-4 rounded-xl border border-medical-info/30 bg-medical-info-light p-4 sm:mb-6 sm:p-5">
+          <div className="mb-1.5 flex items-center gap-2 sm:mb-2">
+            <FileText className="h-4 w-4 text-medical-info" />
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-medical-info sm:text-sm">
+              Call Synopsis
+            </h2>
+          </div>
+          <p className="text-sm leading-relaxed text-gray-800 sm:text-[15px]">{summary}</p>
+        </div>
+      )}
+
+      {/* ── Section 7: Post-Call Communications ── */}
+      <div className="mb-4 sm:mb-6">
+        <PostCallStatus
+          callId={event.id}
+          patientEmail={event.patientEmail}
+          patientEmailSentAt={event.patientEmailSentAt?.toISOString() ?? null}
+          doctorEmailSentAt={event.doctorEmailSentAt?.toISOString() ?? null}
+        />
+      </div>
+
+      <Separator className="my-4 sm:my-6" />
+
+      {/* ── Section 8: Transcript & Raw Data ── */}
+      <section className="mb-6">
+        <TranscriptTabs
+          transcript={transcript}
+          rawData={event.data}
+          duration={duration}
+          turnCount={turnCount}
+          llmCost={llmCost}
+          credits={credits}
+        />
+      </section>
     </main>
-  );
-}
-
-function PremiumLensBadge({ value }: { value: string }) {
-  const lower = value.toLowerCase();
-  let colorClass = "bg-gray-100 text-gray-800 border-gray-300";
-  if (
-    lower.includes("yes") ||
-    lower.includes("interested") ||
-    lower.includes("high")
-  ) {
-    colorClass = "bg-green-100 text-green-800 border-green-300";
-  } else if (
-    lower.includes("no") ||
-    lower.includes("not interested") ||
-    lower.includes("declined")
-  ) {
-    colorClass = "bg-red-100 text-red-800 border-red-300";
-  } else if (
-    lower.includes("maybe") ||
-    lower.includes("unsure") ||
-    lower.includes("considering")
-  ) {
-    colorClass = "bg-amber-100 text-amber-800 border-amber-300";
-  }
-
-  return (
-    <span
-      className={`inline-flex rounded-full border px-3 py-0.5 text-sm font-medium ${colorClass}`}
-    >
-      {value}
-    </span>
   );
 }

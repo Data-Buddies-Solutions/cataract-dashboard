@@ -49,11 +49,7 @@ export function extractPdfData(
     visionPreference: findEntry(
       dcr,
       "preference",
-      "goal",
-      "after",
-      "post",
-      "want",
-      "hope"
+      "goal"
     ),
     glassesPreference: findEntry(dcr, "glass", "independence", "spectacle"),
     premiumLensInterest: findEntry(
