@@ -71,7 +71,10 @@ export function extractPdfData(
       "daily",
       "affected",
       "struggle",
-      "difficult"
+      "difficult",
+      "functional",
+      "demands",
+      "limitation"
     ),
     hobbies: findEntry(dcr, "hobby", "hobbies", "lifestyle", "leisure"),
     concerns: findEntry(dcr, "concern", "question", "nervous", "worry", "fear"),
@@ -80,7 +83,10 @@ export function extractPdfData(
       "medical",
       "condition",
       "health",
-      "medication"
+      "medication",
+      "surgical risk",
+      "ocular history",
+      "ocular"
     ),
     driverInfo: findEntry(dcr, "driver", "ride", "transport", "accompan"),
     callSummary: eventData.analysis?.transcript_summary ?? null,

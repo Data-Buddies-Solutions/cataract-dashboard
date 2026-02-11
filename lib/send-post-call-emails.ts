@@ -49,10 +49,21 @@ export async function sendPostCallEmails(
 
   // Extract data points
   const patientName =
-    findEntry(dcr, "patient name", "name") || "Patient";
-  const patientEmail = (() => {
+    findEntry(dcr, "patient name", "name", "occupation") || "Patient";
+  const patientEmail = await (async () => {
+    // 1. Try extracting from call data
     const val = findEntry(dcr, "email", "e-mail");
     if (val && val.includes("@") && val.includes(".")) return val;
+    // 2. Try the linked patient record
+    const eventRecord = await prisma.webhookEvent.findUnique({
+      where: { id: eventId },
+      include: { patient: { select: { email: true } } },
+    });
+    if (eventRecord?.patient?.email) return eventRecord.patient.email;
+    // 3. Check if patientEmail was stored on the event itself
+    if (eventRecord?.patientEmail) return eventRecord.patientEmail;
+    // 4. Fallback to env variable (for testing)
+    if (process.env.PATIENT_EMAIL_FALLBACK) return process.env.PATIENT_EMAIL_FALLBACK;
     return null;
   })();
   const visionScale = (() => {
@@ -77,7 +88,10 @@ export async function sendPostCallEmails(
     "daily",
     "affected",
     "struggle",
-    "difficult"
+    "difficult",
+    "functional",
+    "demands",
+    "limitation"
   );
   const hobbies = findEntry(dcr, "hobby", "hobbies", "lifestyle", "leisure");
   const medicalConditions = findEntry(
@@ -85,7 +99,10 @@ export async function sendPostCallEmails(
     "medical",
     "condition",
     "health",
-    "medication"
+    "medication",
+    "surgical risk",
+    "ocular history",
+    "ocular"
   );
   const concerns = findEntry(
     dcr,

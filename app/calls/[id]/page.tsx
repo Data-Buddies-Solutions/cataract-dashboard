@@ -133,7 +133,7 @@ export default async function CallDetailPage({
     dcr, "scale", "impact", "rating", "score"
   );
   const activitiesEntry = findDataCollectionEntry(
-    dcr, "activit", "daily", "affected", "struggle", "difficult"
+    dcr, "activit", "daily", "affected", "struggle", "difficult", "functional", "demands", "limitation"
   );
   const preferenceEntry = findDataCollectionEntry(
     dcr, "preference", "goal", "after", "post", "want", "hope"
@@ -151,7 +151,7 @@ export default async function CallDetailPage({
     dcr, "femtosecond", "laser"
   );
   const medicalEntry = findDataCollectionEntry(
-    dcr, "medical", "condition", "health", "medication"
+    dcr, "medical", "condition", "health", "medication", "surgical risk", "ocular"
   );
   const concernsEntry = findDataCollectionEntry(
     dcr, "concern", "question", "nervous", "worry", "fear"

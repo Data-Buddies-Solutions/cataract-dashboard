@@ -46,7 +46,10 @@ export function extractPatientData(data: EventData): ExtractedPatientData {
         lowerKey.includes("daily") ||
         lowerKey.includes("affected") ||
         lowerKey.includes("struggle") ||
-        lowerKey.includes("difficult")
+        lowerKey.includes("difficult") ||
+        lowerKey.includes("functional") ||
+        lowerKey.includes("demands") ||
+        lowerKey.includes("limitation")
       ) {
         activities = entry.value;
       } else if (
