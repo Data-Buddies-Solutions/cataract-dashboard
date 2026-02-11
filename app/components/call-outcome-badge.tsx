@@ -18,7 +18,7 @@ export function CallOutcomeBadge({
     );
   }
   return (
-    <span className="inline-flex rounded-full border border-gray-200 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+    <span className="inline-flex rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
       Unknown
     </span>
   );

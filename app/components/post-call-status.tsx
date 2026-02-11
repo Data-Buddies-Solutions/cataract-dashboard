@@ -49,8 +49,8 @@ export function PostCallStatus({
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-500">
+    <div className="rounded-lg border border-border bg-card p-4">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         Post-Call Communications
       </h2>
 
@@ -58,19 +58,19 @@ export function PostCallStatus({
         {/* Doctor Email Status */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-gray-400" />
-            <span className="text-sm text-gray-700">Doctor Email</span>
+            <Mail className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-foreground">Doctor Email</span>
           </div>
           {doctorEmailSentAt ? (
             <Badge
               variant="outline"
-              className="border-green-200 bg-green-50 text-green-700"
+              className="border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
             >
               <CheckCircle2 className="mr-1 h-3 w-3" />
               Sent {new Date(doctorEmailSentAt).toLocaleDateString()}
             </Badge>
           ) : (
-            <Badge variant="outline" className="text-gray-500">
+            <Badge variant="outline" className="text-muted-foreground">
               <Clock className="mr-1 h-3 w-3" />
               Not sent
             </Badge>
@@ -80,26 +80,26 @@ export function PostCallStatus({
         {/* Patient Email Status */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Mail className="h-4 w-4 text-gray-400" />
-            <span className="text-sm text-gray-700">Patient Email</span>
+            <Mail className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-foreground">Patient Email</span>
             {patientEmail && (
-              <span className="text-xs text-gray-400">({patientEmail})</span>
+              <span className="text-xs text-muted-foreground">({patientEmail})</span>
             )}
           </div>
           {patientEmailSentAt ? (
             <Badge
               variant="outline"
-              className="border-green-200 bg-green-50 text-green-700"
+              className="border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400"
             >
               <CheckCircle2 className="mr-1 h-3 w-3" />
               Sent {new Date(patientEmailSentAt).toLocaleDateString()}
             </Badge>
           ) : !patientEmail ? (
-            <Badge variant="outline" className="text-amber-600">
+            <Badge variant="outline" className="text-amber-600 dark:text-amber-400">
               No email on file
             </Badge>
           ) : (
-            <Badge variant="outline" className="text-gray-500">
+            <Badge variant="outline" className="text-muted-foreground">
               <Clock className="mr-1 h-3 w-3" />
               Not sent
             </Badge>
@@ -123,7 +123,7 @@ export function PostCallStatus({
           Resend All
         </Button>
         {resendResult && (
-          <span className="text-xs text-gray-500">{resendResult}</span>
+          <span className="text-xs text-muted-foreground">{resendResult}</span>
         )}
       </div>
     </div>

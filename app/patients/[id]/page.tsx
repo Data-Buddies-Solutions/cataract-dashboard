@@ -64,7 +64,7 @@ export default async function PatientDetailPage({
     <main className="mx-auto max-w-6xl px-4 py-8">
       <Link
         href="/patients"
-        className="mb-6 inline-block text-sm text-blue-600 hover:underline"
+        className="mb-6 inline-block text-sm text-primary hover:underline"
       >
         &larr; Back to patients
       </Link>
@@ -73,10 +73,10 @@ export default async function PatientDetailPage({
       <div className="mb-6">
         <h1 className="text-2xl font-bold">{patient.name}</h1>
         {patient.phone && (
-          <p className="text-sm text-gray-500">{patient.phone}</p>
+          <p className="text-sm text-muted-foreground">{patient.phone}</p>
         )}
         {patient.notes && (
-          <p className="mt-1 text-sm text-gray-600">{patient.notes}</p>
+          <p className="mt-1 text-sm text-muted-foreground">{patient.notes}</p>
         )}
       </div>
 
@@ -123,39 +123,39 @@ export default async function PatientDetailPage({
       <section>
         <h2 className="mb-3 text-lg font-semibold">Call History</h2>
         {patient.calls.length === 0 ? (
-          <p className="text-gray-500">No calls linked to this patient.</p>
+          <p className="text-muted-foreground">No calls linked to this patient.</p>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="overflow-x-auto rounded-lg border border-border bg-card">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-muted">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Date &amp; Time
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Outcome
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Duration
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Vision Scale
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Activities
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     Preference
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y divide-border">
                 {patient.calls.map((call) => (
-                  <tr key={call.id} className="hover:bg-gray-50">
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
+                  <tr key={call.id} className="hover:bg-muted">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-foreground">
                       <Link
                         href={`/calls/${call.id}`}
-                        className="hover:text-blue-600 hover:underline"
+                        className="hover:text-foreground hover:underline"
                       >
                         <LocalTime
                           date={new Date(
@@ -167,7 +167,7 @@ export default async function PatientDetailPage({
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <CallOutcomeBadge successful={call.callSuccessful} />
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                       {call.callDurationSecs != null
                         ? formatDuration(call.callDurationSecs)
                         : "—"}
@@ -175,10 +175,10 @@ export default async function PatientDetailPage({
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <VisionScaleBadge scale={call.visionScale} />
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 max-w-[200px] truncate">
+                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-[200px] truncate">
                       {call.activities ?? "—"}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                       {call.visionPreference ?? "—"}
                     </td>
                   </tr>

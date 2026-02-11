@@ -1,6 +1,6 @@
 export function VisionScaleBadge({ scale }: { scale: number | null }) {
   if (scale === null) {
-    return <span className="text-sm text-gray-400">—</span>;
+    return <span className="text-sm text-muted-foreground">—</span>;
   }
 
   let colorClass: string;

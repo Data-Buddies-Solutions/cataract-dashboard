@@ -32,10 +32,10 @@ export default async function PatientsPage() {
       <h1 className="mb-6 text-2xl font-bold">Patients</h1>
 
       {untaggedCount > 0 && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
           <strong>{untaggedCount}</strong> untagged call
           {untaggedCount !== 1 ? "s" : ""} — assign patients from the{" "}
-          <Link href="/" className="underline hover:text-amber-900">
+          <Link href="/" className="underline hover:text-amber-900 dark:hover:text-amber-200">
             Calls
           </Link>{" "}
           page.
@@ -43,32 +43,32 @@ export default async function PatientsPage() {
       )}
 
       {patients.length === 0 ? (
-        <p className="text-gray-500">
+        <p className="text-muted-foreground">
           No patients yet. Tag a call from the dashboard to create a patient.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+        <div className="overflow-x-auto rounded-lg border border-border bg-card">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Patient Name
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   # Calls
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Last Call
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Avg Vision Scale
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Vision Preference
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-border">
               {patients.map((patient) => {
                 const callCount = patient.calls.length;
                 const lastCall = patient.calls[0];
@@ -87,19 +87,19 @@ export default async function PatientsPage() {
                 )?.visionPreference;
 
                 return (
-                  <tr key={patient.id} className="hover:bg-gray-50">
-                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
+                  <tr key={patient.id} className="hover:bg-muted">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-foreground">
                       <Link
                         href={`/patients/${patient.id}`}
-                        className="hover:text-blue-600 hover:underline"
+                        className="hover:text-foreground hover:underline"
                       >
                         {patient.name}
                       </Link>
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                       {callCount}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                       {lastCall
                         ? lastCall.createdAt.toLocaleDateString()
                         : "—"}
@@ -107,7 +107,7 @@ export default async function PatientsPage() {
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <VisionScaleBadge scale={avgScale} />
                     </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-600">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                       {latestPreference ?? "—"}
                     </td>
                   </tr>

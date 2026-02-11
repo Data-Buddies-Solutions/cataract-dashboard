@@ -62,7 +62,7 @@ export function PatientTagForm({
   return (
     <div className="flex items-center gap-2">
       {currentPatientName && (
-        <span className="text-sm text-gray-700">
+        <span className="text-sm text-foreground">
           Patient: <strong>{currentPatientName}</strong>
         </span>
       )}
@@ -72,7 +72,7 @@ export function PatientTagForm({
           <select
             value={selectedId}
             onChange={(e) => setSelectedId(e.target.value)}
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
+            className="rounded border border-border bg-background px-2 py-1 text-sm"
           >
             <option value="">
               {currentPatientName ? "Reassign..." : "Assign patient..."}
@@ -87,14 +87,14 @@ export function PatientTagForm({
             <button
               onClick={() => assignPatient(selectedId)}
               disabled={saving}
-              className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {saving ? "Saving..." : "Assign"}
             </button>
           )}
           <button
             onClick={() => setShowNew(true)}
-            className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-600 hover:bg-gray-50"
+            className="rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
           >
             + New
           </button>
@@ -106,18 +106,18 @@ export function PatientTagForm({
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Patient name"
-            className="rounded border border-gray-300 px-2 py-1 text-sm"
+            className="rounded border border-border bg-background px-2 py-1 text-sm"
           />
           <button
             onClick={createAndAssign}
             disabled={saving || !newName.trim()}
-            className="rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded bg-primary px-2 py-1 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {saving ? "Saving..." : "Create & Assign"}
           </button>
           <button
             onClick={() => setShowNew(false)}
-            className="text-xs text-gray-500 hover:text-gray-700"
+            className="text-xs text-muted-foreground hover:text-foreground"
           >
             Cancel
           </button>

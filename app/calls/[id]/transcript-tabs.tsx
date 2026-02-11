@@ -34,7 +34,7 @@ export function TranscriptTabs({
 
         <TabsContent value="transcript">
           {transcript && transcript.length > 0 ? (
-            <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4">
+            <div className="space-y-3 rounded-lg border border-border bg-card p-4">
               {transcript.map((turn, i) => (
                 <div
                   key={i}
@@ -42,7 +42,7 @@ export function TranscriptTabs({
                     turn.role === "agent" ? "items-start" : "items-end"
                   }`}
                 >
-                  <span className="mb-0.5 text-xs font-medium uppercase text-gray-400">
+                  <span className="mb-0.5 text-xs font-medium uppercase text-muted-foreground">
                     {turn.role}
                     {turn.time_in_call_secs != null &&
                       ` (${turn.time_in_call_secs}s)`}
@@ -50,7 +50,7 @@ export function TranscriptTabs({
                   <div
                     className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
                       turn.role === "agent"
-                        ? "bg-gray-100 text-gray-800"
+                        ? "bg-muted text-foreground"
                         : "bg-blue-600 text-white"
                     }`}
                   >
@@ -67,7 +67,7 @@ export function TranscriptTabs({
         </TabsContent>
 
         <TabsContent value="raw">
-          <pre className="overflow-x-auto rounded-lg border border-gray-200 bg-gray-900 p-4 text-sm text-green-400">
+          <pre className="overflow-x-auto rounded-lg border border-border bg-gray-900 p-4 text-sm text-green-400 dark:bg-black">
             {JSON.stringify(rawData, null, 2)}
           </pre>
         </TabsContent>
