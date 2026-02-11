@@ -2,11 +2,8 @@ import { render } from "@react-email/components";
 import { getResend } from "./resend";
 import { prisma } from "./db";
 import { extractPdfData, generatePatientPdf } from "./generate-patient-pdf";
-import { generateVideo } from "./generate-video";
-import type { VideoCallData } from "./generate-video";
 import DoctorSummaryEmail from "@/emails/doctor-summary";
 import PatientEmail from "@/emails/patient-email";
-import PatientVideoReadyEmail from "@/emails/patient-video-ready";
 import type {
   EventData,
   DataCollectionEntry,
@@ -152,7 +149,7 @@ export async function sendPostCallEmails(
       }))
     : [];
 
-  // ─── 1. GENERATE PDF (instant) ───
+  // ─── 1. GENERATE PDF ───
   let pdfBytes: Uint8Array | null = null;
   try {
     const pdfData = extractPdfData(eventData, patientName, eventTimestamp);
@@ -161,21 +158,7 @@ export async function sendPostCallEmails(
     console.error("PDF generation failed:", error);
   }
 
-  // ─── 2. START VIDEO GENERATION (async, don't wait) ───
-  const videoCallData: VideoCallData = {
-    premiumLensInterest,
-    laserInterest,
-    activities,
-    visionPreference,
-    concerns,
-  };
-
-  // Fire and forget — video generation runs in background
-  const videoPromise = generateVideo(videoCallData, eventId).catch((err) =>
-    console.error("Video generation error:", err)
-  );
-
-  // ─── 3. SEND DOCTOR EMAIL ───
+  // ─── 2. SEND DOCTOR EMAIL ───
   if (doctorEmail) {
     try {
       const doctorHtml = await render(
@@ -214,15 +197,20 @@ export async function sendPostCallEmails(
     }
   }
 
-  // ─── 4. SEND PATIENT EMAIL WITH PDF ───
+  // ─── 3. SEND PATIENT EMAIL WITH PDF ───
   if (patientEmail && pdfBytes) {
     try {
       const patientHtml = await render(
         PatientEmail({
           patientName,
           callDate,
-          videoUrl: null,
-          videoReady: false,
+          visionScale,
+          glassesPreference,
+          premiumLensInterest,
+          laserInterest,
+          activities,
+          concerns,
+          visionPreference,
         })
       );
 
@@ -253,34 +241,5 @@ export async function sendPostCallEmails(
     }
   } else if (!patientEmail) {
     console.log("No patient email found, skipping patient email for event", eventId);
-  }
-
-  // ─── 5. WAIT FOR VIDEO AND SEND FOLLOW-UP IF NEEDED ───
-  try {
-    const videoUrl = await videoPromise;
-    if (videoUrl && patientEmail) {
-      // Send follow-up video email
-      try {
-        const videoHtml = await render(
-          PatientVideoReadyEmail({
-            patientName,
-            videoUrl,
-          })
-        );
-
-        await getResend().emails.send({
-          from: fromEmail,
-          to: patientEmail,
-          subject: `Your Personalized Surgery Video Is Ready`,
-          html: videoHtml,
-        });
-
-        console.log("Patient video email sent for event", eventId);
-      } catch (error) {
-        console.error("Failed to send video follow-up email:", error);
-      }
-    }
-  } catch {
-    // Video errors already logged in generateVideo
   }
 }

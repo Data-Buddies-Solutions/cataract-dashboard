@@ -5,11 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Mail,
-  Video,
   RefreshCw,
   CheckCircle2,
   Clock,
-  XCircle,
   Loader2,
 } from "lucide-react";
 
@@ -18,8 +16,6 @@ interface PostCallStatusProps {
   patientEmail: string | null;
   patientEmailSentAt: string | null;
   doctorEmailSentAt: string | null;
-  videoStatus: string | null;
-  videoUrl: string | null;
 }
 
 export function PostCallStatus({
@@ -27,8 +23,6 @@ export function PostCallStatus({
   patientEmail,
   patientEmailSentAt,
   doctorEmailSentAt,
-  videoStatus,
-  videoUrl,
 }: PostCallStatusProps) {
   const [resending, setResending] = useState(false);
   const [resendResult, setResendResult] = useState<string | null>(null);
@@ -108,43 +102,6 @@ export function PostCallStatus({
             <Badge variant="outline" className="text-gray-500">
               <Clock className="mr-1 h-3 w-3" />
               Not sent
-            </Badge>
-          )}
-        </div>
-
-        {/* Video Status */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Video className="h-4 w-4 text-gray-400" />
-            <span className="text-sm text-gray-700">Educational Video</span>
-          </div>
-          {videoStatus === "ready" && videoUrl ? (
-            <a
-              href={videoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
-            >
-              <CheckCircle2 className="h-3 w-3 text-green-600" />
-              View Video
-            </a>
-          ) : videoStatus === "generating" ? (
-            <Badge variant="outline" className="text-blue-600">
-              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-              Generating...
-            </Badge>
-          ) : videoStatus === "failed" ? (
-            <Badge
-              variant="outline"
-              className="border-red-200 bg-red-50 text-red-600"
-            >
-              <XCircle className="mr-1 h-3 w-3" />
-              Failed
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-gray-500">
-              <Clock className="mr-1 h-3 w-3" />
-              Pending
             </Badge>
           )}
         </div>

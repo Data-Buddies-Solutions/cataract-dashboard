@@ -1,4 +1,5 @@
 import { getGoogleAI } from "./google-ai";
+import { put } from "@vercel/blob";
 import { prisma } from "./db";
 
 interface VideoCallData {
@@ -61,7 +62,9 @@ function buildVideoPrompt(data: VideoCallData): string {
     } else if (
       activitiesLower.includes("golf") ||
       activitiesLower.includes("sport") ||
-      activitiesLower.includes("outdoor")
+      activitiesLower.includes("outdoor") ||
+      activitiesLower.includes("soccer") ||
+      activitiesLower.includes("tennis")
     ) {
       parts.push(
         "End with a bright outdoor scene coming into sharp, vivid focus."
@@ -78,7 +81,9 @@ function buildVideoPrompt(data: VideoCallData): string {
   }
 
   parts.push(
-    "No text overlays, no narration, no people's faces. Smooth transitions, soothing pace."
+    "A warm, soothing female narrator with a gentle bedside manner explains each step in simple, reassuring language.",
+    "The narration should feel like a caring nurse explaining the procedure, calm and unhurried.",
+    "No text overlays, no people's faces. Smooth transitions, soothing pace."
   );
 
   return parts.join(" ");
@@ -86,6 +91,33 @@ function buildVideoPrompt(data: VideoCallData): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function downloadAndStoreVideo(
+  googleUri: string,
+  eventId: string
+): Promise<string> {
+  // Download the video from Google's API
+  const apiKey = process.env.GEMINI_API_KEY!;
+  const url = new URL(googleUri);
+  url.searchParams.set("key", apiKey);
+  url.searchParams.set("alt", "media");
+  console.log("Downloading video from:", url.toString());
+  const response = await fetch(url.toString());
+
+  if (!response.ok) {
+    throw new Error(`Failed to download video: ${response.status} ${response.statusText}`);
+  }
+
+  const videoBuffer = await response.arrayBuffer();
+
+  // Upload to Vercel Blob for public access
+  const blob = await put(`videos/${eventId}.mp4`, new Uint8Array(videoBuffer), {
+    access: "public",
+    contentType: "video/mp4",
+  });
+
+  return blob.url;
 }
 
 export async function generateVideo(
@@ -112,11 +144,12 @@ export async function generateVideo(
       prompt,
       config: {
         aspectRatio: "16:9",
+        durationSeconds: 8,
       },
     });
 
-    // Poll until complete (up to 5 minutes)
-    const maxAttempts = 30;
+    // Poll until complete (up to 10 minutes for longer videos)
+    const maxAttempts = 60;
     let attempt = 0;
     while (!operation.done && attempt < maxAttempts) {
       await sleep(10000);
@@ -133,23 +166,31 @@ export async function generateVideo(
       return null;
     }
 
-    // Get the video URL from the response
+    // Get the video from the response
     const video = operation.response?.generatedVideos?.[0]?.video;
-    const videoUri = video?.uri ?? null;
+    const googleUri = video?.uri ?? null;
 
-    if (videoUri) {
+    if (googleUri) {
+      // For now, use Google URL directly with API key for testing
+      // TODO: Switch to Vercel Blob for production (Google URLs expire)
+      const url = new URL(googleUri);
+      url.searchParams.set("key", apiKey);
+      url.searchParams.set("alt", "media");
+      const directUrl = url.toString();
+
       await prisma.webhookEvent.update({
         where: { id: eventId },
-        data: { videoUrl: videoUri, videoStatus: "ready" },
+        data: { videoUrl: directUrl, videoStatus: "ready" },
       });
+
+      return directUrl;
     } else {
       await prisma.webhookEvent.update({
         where: { id: eventId },
         data: { videoStatus: "failed" },
       });
+      return null;
     }
-
-    return videoUri;
   } catch (error) {
     console.error("Video generation failed for event", eventId, error);
     await prisma.webhookEvent.update({

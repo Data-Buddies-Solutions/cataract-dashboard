@@ -245,8 +245,6 @@ export default async function CallDetailPage({
           patientEmail={event.patientEmail}
           patientEmailSentAt={event.patientEmailSentAt?.toISOString() ?? null}
           doctorEmailSentAt={event.doctorEmailSentAt?.toISOString() ?? null}
-          videoStatus={event.videoStatus}
-          videoUrl={event.videoUrl}
         />
       </div>
 
