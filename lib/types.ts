@@ -1,3 +1,12 @@
+export type CallStatus = "pending" | "queued" | "called" | "completed";
+
+export const CALL_STATUS_LABELS: Record<CallStatus, string> = {
+  pending: "Pending",
+  queued: "Queued",
+  called: "Called",
+  completed: "Completed",
+};
+
 export interface TranscriptTurn {
   role: string;
   message: string;

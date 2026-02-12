@@ -1,68 +1,109 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { columns, type CallRow } from "@/app/components/calls-table/columns";
-import { DataTable } from "@/app/components/calls-table/data-table";
-import type { EventData, DataCollectionEntry } from "@/lib/types";
+import { AnalyticsStatCard } from "@/app/components/analytics-stat-card";
+import {
+  Users,
+  ListOrdered,
+  PhoneCall,
+  Calendar,
+} from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
-function findDataCollectionEntry(
-  dcr: Record<string, DataCollectionEntry>,
-  ...keywords: string[]
-): DataCollectionEntry | undefined {
-  for (const [key, entry] of Object.entries(dcr)) {
-    const lowerKey = key.toLowerCase();
-    if (keywords.some((kw) => lowerKey.includes(kw))) {
-      return entry;
-    }
-  }
-  return undefined;
-}
-
-export default async function CallsListPage() {
-  const events = await prisma.webhookEvent.findMany({
-    where: { type: "post_call_transcription" },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-    include: { patient: { select: { id: true, name: true } } },
-  });
-
-  const rows: CallRow[] = events.map((event) => {
-    const d = event.data as EventData;
-    const dcr = d.analysis?.data_collection_results ?? {};
-    const nameEntry = findDataCollectionEntry(dcr, "patient name", "name");
-    const sentimentEntry = findDataCollectionEntry(
-      dcr,
-      "sentiment",
-      "mood",
-      "tone"
-    );
-    return {
-      id: event.id,
-      collectedName: nameEntry?.value || null,
-      patientName: event.patient?.name || null,
-      eventTimestamp: event.eventTimestamp,
-      callSuccessful: event.callSuccessful,
-      sentiment: sentimentEntry?.value || null,
-      callDurationSecs: event.callDurationSecs,
-      visionScale: event.visionScale,
-    };
-  });
+export default async function DashboardPage() {
+  const [totalPatients, queueSize, todayCalls, upcomingAppointments] =
+    await Promise.all([
+      prisma.patient.count(),
+      prisma.patient.count({ where: { callStatus: "queued" } }),
+      prisma.webhookEvent.count({
+        where: {
+          type: "post_call_transcription",
+          createdAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          },
+        },
+      }),
+      prisma.patient.count({
+        where: {
+          appointmentDate: {
+            gte: new Date(),
+          },
+        },
+      }),
+    ]);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold">Calls</h1>
-
-      {rows.length === 0 ? (
-        <p className="text-muted-foreground">
-          No calls received yet. Send a webhook to{" "}
-          <code className="rounded bg-muted px-1 py-0.5 text-sm">
-            /api/webhook/elevenlabs
-          </code>{" "}
-          to get started.
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Overview of patients, calls, and queue status
         </p>
-      ) : (
-        <DataTable columns={columns} data={rows} />
-      )}
+      </div>
+
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <AnalyticsStatCard
+          label="Total Patients"
+          value={String(totalPatients)}
+          icon={Users}
+          iconColorClass="bg-muted text-muted-foreground"
+          bgClass=""
+        />
+        <AnalyticsStatCard
+          label="Queue Size"
+          value={String(queueSize)}
+          icon={ListOrdered}
+          iconColorClass="bg-muted text-muted-foreground"
+          bgClass=""
+        />
+        <AnalyticsStatCard
+          label="Calls Today"
+          value={String(todayCalls)}
+          icon={PhoneCall}
+          iconColorClass="bg-muted text-muted-foreground"
+          bgClass=""
+        />
+        <AnalyticsStatCard
+          label="Upcoming Appts"
+          value={String(upcomingAppointments)}
+          icon={Calendar}
+          iconColorClass="bg-muted text-muted-foreground"
+          bgClass=""
+        />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Link
+          href="/patients"
+          className="rounded-lg border bg-card p-5 transition-colors hover:bg-accent"
+        >
+          <Users className="mb-2 h-5 w-5 text-muted-foreground" />
+          <h2 className="font-semibold">Patients</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            View and manage patient records
+          </p>
+        </Link>
+        <Link
+          href="/queue"
+          className="rounded-lg border bg-card p-5 transition-colors hover:bg-accent"
+        >
+          <ListOrdered className="mb-2 h-5 w-5 text-muted-foreground" />
+          <h2 className="font-semibold">Call Queue</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage patients queued for AI calls
+          </p>
+        </Link>
+        <Link
+          href="/calls"
+          className="rounded-lg border bg-card p-5 transition-colors hover:bg-accent"
+        >
+          <PhoneCall className="mb-2 h-5 w-5 text-muted-foreground" />
+          <h2 className="font-semibold">Call History</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Browse all received call data
+          </p>
+        </Link>
+      </div>
     </main>
   );
 }

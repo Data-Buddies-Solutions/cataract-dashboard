@@ -7,6 +7,9 @@ import { Phone, Eye, Calendar, CheckCircle2 } from "lucide-react";
 import { CallOutcomeBadge } from "@/app/components/call-outcome-badge";
 import { VisionScaleBadge } from "@/app/components/vision-scale-badge";
 import { VisionScaleOverTimeChart } from "./vision-scale-over-time-chart";
+import { CallStatusActions } from "@/app/components/call-status-actions";
+import { Badge } from "@/components/ui/badge";
+import { CALL_STATUS_LABELS, type CallStatus } from "@/lib/types";
 
 function formatDuration(secs: number): string {
   const m = Math.floor(secs / 60);
@@ -34,6 +37,10 @@ export default async function PatientDetailPage({
     notFound();
   }
 
+  const displayName =
+    [patient.firstName, patient.lastName].filter(Boolean).join(" ") ||
+    patient.name;
+
   const totalCalls = patient.calls.length;
   const scales = patient.calls
     .map((c) => c.visionScale)
@@ -51,7 +58,6 @@ export default async function PatientDetailPage({
       : "—";
   const lastCall = patient.calls[0];
 
-  // Build vision scale over time data (chronological order)
   const visionOverTime = patient.calls
     .filter((c) => c.visionScale !== null)
     .reverse()
@@ -71,13 +77,33 @@ export default async function PatientDetailPage({
 
       {/* Patient Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">{patient.name}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold">{displayName}</h1>
+          <Badge variant="outline">
+            {CALL_STATUS_LABELS[patient.callStatus as CallStatus] ?? patient.callStatus}
+          </Badge>
+        </div>
         {patient.phone && (
           <p className="text-sm text-muted-foreground">{patient.phone}</p>
         )}
+        <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          {patient.dateOfBirth && (
+            <span>DOB: {patient.dateOfBirth.toLocaleDateString()}</span>
+          )}
+          {patient.appointmentDate && (
+            <span>Appointment: {patient.appointmentDate.toLocaleDateString()}</span>
+          )}
+          {patient.doctor && <span>Doctor: {patient.doctor}</span>}
+        </div>
         {patient.notes && (
           <p className="mt-1 text-sm text-muted-foreground">{patient.notes}</p>
         )}
+        <div className="mt-3">
+          <CallStatusActions
+            patientId={patient.id}
+            currentStatus={patient.callStatus as CallStatus}
+          />
+        </div>
       </div>
 
       {/* Stat Cards */}

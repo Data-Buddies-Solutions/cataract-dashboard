@@ -114,7 +114,7 @@ export default async function CallDetailPage({
 
   const event = await prisma.webhookEvent.findUnique({
     where: { id },
-    include: { patient: { select: { id: true, name: true } } },
+    include: { patient: { select: { id: true, name: true, firstName: true, lastName: true } } },
   });
 
   if (!event) {
@@ -183,7 +183,10 @@ export default async function CallDetailPage({
       patientName = rawNameValue;
     }
   }
-  patientName = patientName || event.patient?.name || null;
+  const patientDisplayName = event.patient
+    ? [event.patient.firstName, event.patient.lastName].filter(Boolean).join(" ") || event.patient.name
+    : null;
+  patientName = patientName || patientDisplayName || null;
   const occupationValue = parsedOccupation || (occupationEntry?.value !== rawNameValue ? occupationEntry?.value : null);
 
   const sentimentValue = sentimentMatch?.entry.value || null;
@@ -207,7 +210,7 @@ export default async function CallDetailPage({
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
       <Link
-        href="/"
+        href="/calls"
         className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground sm:mb-6"
       >
         &larr; Back to calls

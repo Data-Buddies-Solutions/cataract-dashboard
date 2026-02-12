@@ -8,14 +8,24 @@ datasource db {
 }
 
 model Patient {
-  id        String   @id @default(cuid())
-  name      String
-  phone     String?
-  email     String?
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  calls     WebhookEvent[]
+  id              String    @id @default(cuid())
+  name            String
+  firstName       String?
+  lastName        String?
+  phone           String?
+  email           String?
+  notes           String?
+  dateOfBirth     DateTime?
+  appointmentDate DateTime?
+  doctor          String?
+  callStatus      String    @default("pending")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  calls           WebhookEvent[]
+
+  @@index([callStatus])
+  @@index([appointmentDate])
+  @@index([lastName, firstName])
 }
 
 model WebhookEvent {

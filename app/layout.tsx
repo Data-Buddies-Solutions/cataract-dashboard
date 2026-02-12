@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ModeToggle } from "@/components/mode-toggle";
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/app/components/app-sidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Cataract Call Analytics",
-  description: "Dashboard for cataract surgery post-call analytics",
+  title: "Cataract Dashboard",
+  description: "Dashboard for cataract surgery patient management and call analytics",
 };
 
 export default function RootLayout({
@@ -18,35 +19,18 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className="antialiased">
         <ThemeProvider>
-          <nav className="border-b border-border bg-background">
-            <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-              <Link href="/" className="text-sm font-semibold">
-                Cataract Call Analytics
-              </Link>
-              <div className="flex items-center gap-4">
-                <Link
-                  href="/"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Calls
-                </Link>
-                <Link
-                  href="/patients"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Patients
-                </Link>
-                <Link
-                  href="/analytics"
-                  className="text-sm text-muted-foreground hover:text-foreground"
-                >
-                  Analytics
-                </Link>
-                <ModeToggle />
-              </div>
-            </div>
-          </nav>
-          {children}
+          <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset>
+              <header className="flex h-12 items-center gap-2 border-b px-4">
+                <SidebarTrigger className="-ml-1" />
+                <div className="ml-auto">
+                  <ModeToggle />
+                </div>
+              </header>
+              {children}
+            </SidebarInset>
+          </SidebarProvider>
         </ThemeProvider>
       </body>
     </html>

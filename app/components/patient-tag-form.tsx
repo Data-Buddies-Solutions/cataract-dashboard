@@ -5,6 +5,12 @@ import { useState, useEffect } from "react";
 interface Patient {
   id: string;
   name: string;
+  firstName: string | null;
+  lastName: string | null;
+}
+
+function displayName(p: Patient) {
+  return [p.firstName, p.lastName].filter(Boolean).join(" ") || p.name;
 }
 
 export function PatientTagForm({
@@ -47,10 +53,15 @@ export function PatientTagForm({
     if (!newName.trim()) return;
     setSaving(true);
     try {
+      const trimmed = newName.trim();
+      const spaceIdx = trimmed.indexOf(" ");
+      const firstName = spaceIdx > 0 ? trimmed.slice(0, spaceIdx) : trimmed;
+      const lastName = spaceIdx > 0 ? trimmed.slice(spaceIdx + 1) : "";
+
       const res = await fetch("/api/patients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName.trim() }),
+        body: JSON.stringify({ firstName, lastName }),
       });
       const patient = await res.json();
       await assignPatient(patient.id);
@@ -79,7 +90,7 @@ export function PatientTagForm({
             </option>
             {patients.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
+                {displayName(p)}
               </option>
             ))}
           </select>
@@ -105,7 +116,7 @@ export function PatientTagForm({
             type="text"
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="Patient name"
+            placeholder="First Last"
             className="rounded border border-border bg-background px-2 py-1 text-sm"
           />
           <button
