@@ -25,26 +25,33 @@ import {
   AlertCircle,
   Target,
   Brain,
+  MessageCircle,
 } from "lucide-react";
 import { TranscriptPanel } from "./transcript-panel";
+import { ReviewButton } from "./review-button";
+import { SurgeonNotes } from "./surgeon-notes";
 import type {
   EventData,
   TranscriptTurn,
-  DataCollectionEntry,
   EvaluationCriteriaEntry,
 } from "@/lib/types";
 import { computePropensityScore, computeRadarData } from "@/lib/propensity-scoring";
 import { PropensityGauge } from "@/app/components/charts/propensity-gauge";
 import { LifestyleRadar } from "@/app/components/charts/lifestyle-radar";
+import { PropensityBreakdown } from "@/app/components/propensity-breakdown";
+import {
+  findDataCollectionEntry,
+  findUnmatchedEntries,
+  getReadinessLabel,
+  getPremiumLensLabel,
+  visionSeverityLabel,
+  formatLabel,
+} from "@/lib/extract-call-insights";
 
 function formatDuration(secs: number): string {
   const m = Math.floor(secs / 60);
   const s = Math.round(secs % 60);
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
-}
-
-function formatLabel(id: string): string {
-  return id.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function criteriaIcon(result: string) {
@@ -55,55 +62,12 @@ function criteriaIcon(result: string) {
   return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
 }
 
-function findDataCollectionEntry(
-  dcr: Record<string, DataCollectionEntry>,
-  ...keywords: string[]
-): { key: string; entry: DataCollectionEntry } | undefined {
-  for (const [key, entry] of Object.entries(dcr)) {
-    const lowerKey = key.toLowerCase();
-    if (keywords.some((kw) => lowerKey.includes(kw))) {
-      return { key, entry };
-    }
-  }
-  return undefined;
-}
-
-function findUnmatchedEntries(
-  dcr: Record<string, DataCollectionEntry>,
-  matchedKeys: Set<string>
-): { key: string; entry: DataCollectionEntry }[] {
-  return Object.entries(dcr)
-    .filter(([key]) => !matchedKeys.has(key))
-    .map(([key, entry]) => ({ key, entry }));
-}
-
-function getReadinessLabel(value: string): string {
-  const lower = value.toLowerCase();
-  if (lower.includes("ready") || lower.includes("scheduled") || lower.includes("decided") || lower.includes("yes"))
-    return "Ready";
-  if (lower.includes("considering") || lower.includes("leaning") || lower.includes("likely") || lower.includes("soon"))
-    return "Leaning Yes";
-  if (lower.includes("not ready") || lower.includes("undecided") || lower.includes("unsure") || lower.includes("no"))
-    return "Not Ready";
-  return "Unknown";
-}
-
-function getPremiumLensLabel(value: string): string {
-  const lower = value.toLowerCase();
-  if (lower.includes("yes") || lower.includes("interested") || lower.includes("high"))
-    return "High Interest";
-  if (lower.includes("maybe") || lower.includes("unsure") || lower.includes("considering") || lower.includes("moderate"))
-    return "Considering";
-  if (lower.includes("no") || lower.includes("not interested") || lower.includes("declined"))
-    return "Not Interested";
-  return "Unknown";
-}
-
-function visionSeverityLabel(scale: number): string {
-  if (scale <= 3) return "Mild";
-  if (scale <= 6) return "Moderate";
-  return "Severe";
-}
+const tierBadgeVariant: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
+  high: "default",
+  moderate: "secondary",
+  low: "outline",
+  insufficient: "outline",
+};
 
 export default async function CallDetailPage({
   params,
@@ -114,7 +78,7 @@ export default async function CallDetailPage({
 
   const event = await prisma.webhookEvent.findUnique({
     where: { id },
-    include: { patient: { select: { id: true, name: true, firstName: true, lastName: true } } },
+    include: { patient: { select: { id: true, name: true, firstName: true, lastName: true, notes: true } } },
   });
 
   if (!event) {
@@ -168,9 +132,8 @@ export default async function CallDetailPage({
   const concernsEntry = concernsMatch?.entry;
   const readinessEntry = readinessMatch?.entry;
   const personalityEntry = personalityMatch?.entry;
-  const occupationEntry = occupationMatch?.entry;
 
-  // Parse patient name — value may be JSON like {"patient_name": "Mike", "occupation": "retired"}
+  // Parse patient name
   let patientName: string | null = null;
   let parsedOccupation: string | null = null;
   const rawNameValue = patientNameMatch?.entry.value;
@@ -187,7 +150,7 @@ export default async function CallDetailPage({
     ? [event.patient.firstName, event.patient.lastName].filter(Boolean).join(" ") || event.patient.name
     : null;
   patientName = patientName || patientDisplayName || null;
-  const occupationValue = parsedOccupation || (occupationEntry?.value !== rawNameValue ? occupationEntry?.value : null);
+  const occupationValue = parsedOccupation || (occupationMatch?.entry.value !== rawNameValue ? occupationMatch?.entry.value : null);
 
   const sentimentValue = sentimentMatch?.entry.value || null;
 
@@ -195,7 +158,7 @@ export default async function CallDetailPage({
   const premiumLensLabel = premiumLensEntry?.value ? getPremiumLensLabel(premiumLensEntry.value) : null;
   const visionScale = event.visionScale;
 
-  // ── IOL Upgrade Propensity scoring ──
+  // IOL Upgrade Propensity scoring
   const propensityInputs = {
     premiumLensValue: premiumLensEntry?.value,
     readinessValue: readinessEntry?.value,
@@ -209,50 +172,75 @@ export default async function CallDetailPage({
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
-      <Link
-        href="/calls"
-        className="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground sm:mb-6"
-      >
-        &larr; Back to calls
-      </Link>
-
-      {/* ── 1. Header Banner ── */}
-      <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border bg-card px-4 py-2.5">
-        <div className="flex flex-col">
-          <h1 className="truncate text-base font-semibold sm:text-lg">
-            {patientName || "Unknown Patient"}
-          </h1>
-          {occupationValue && (
-            <span className="text-xs text-muted-foreground">{occupationValue}</span>
-          )}
-        </div>
-        <span className="text-xs text-muted-foreground">&middot;</span>
-        <span className="text-xs text-muted-foreground">
-          <LocalTime date={new Date(event.eventTimestamp * 1000).toISOString()} />
-        </span>
-        {duration != null && (
-          <>
-            <span className="text-xs text-muted-foreground">&middot;</span>
-            <span className="text-xs text-muted-foreground">{formatDuration(duration)}</span>
-          </>
-        )}
-        {sentimentValue && (
-          <>
-            <span className="text-xs text-muted-foreground">&middot;</span>
-            <span className="text-xs text-muted-foreground">{sentimentValue}</span>
-          </>
-        )}
-        {event.callSuccessful != null && (
-          <>
-            <span className="text-xs text-muted-foreground">&middot;</span>
-            <span className="text-xs text-muted-foreground">
-              {event.callSuccessful ? "Successful" : "Failed"}
-            </span>
-          </>
-        )}
+      <div className="mb-4 flex items-center justify-between sm:mb-6">
+        <Link
+          href="/calls"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          &larr; Back to calls
+        </Link>
+        <ReviewButton
+          callId={event.id}
+          initialReviewedAt={event.reviewedAt?.toISOString() ?? null}
+        />
       </div>
 
-      {/* ── 2. Call Synopsis (always visible) ── */}
+      {/* ── 1. Hero Banner ── */}
+      <div className="mb-6 rounded-lg border bg-card px-4 py-3 sm:px-5 sm:py-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold sm:text-2xl">
+                {patientName || "Unknown Patient"}
+              </h1>
+              {event.patient?.id && (
+                <Link
+                  href={`/patients/${event.patient.id}`}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  View patient &rarr;
+                </Link>
+              )}
+            </div>
+            {occupationValue && (
+              <span className="text-sm text-muted-foreground">{occupationValue}</span>
+            )}
+          </div>
+          {propensity.tier !== "insufficient" && (
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold">{propensity.overallScore}%</span>
+              <Badge variant={tierBadgeVariant[propensity.tier]}>
+                {propensity.tier === "high" ? "High" : propensity.tier === "moderate" ? "Moderate" : "Low"}
+              </Badge>
+            </div>
+          )}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span>
+            <LocalTime date={new Date(event.eventTimestamp * 1000).toISOString()} />
+          </span>
+          {duration != null && (
+            <>
+              <span>&middot;</span>
+              <span>{formatDuration(duration)}</span>
+            </>
+          )}
+          {sentimentValue && (
+            <>
+              <span>&middot;</span>
+              <span>{sentimentValue}</span>
+            </>
+          )}
+          {event.callSuccessful != null && (
+            <>
+              <span>&middot;</span>
+              <span>{event.callSuccessful ? "Successful" : "Failed"}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── 2. Call Synopsis ── */}
       {summary && (
         <div className="mb-6 rounded-lg border bg-card p-4 sm:p-5">
           <div className="mb-1.5 flex items-center gap-2">
@@ -270,19 +258,19 @@ export default async function CallDetailPage({
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:text-sm">
           Decision Dashboard
         </h2>
-        <div className="grid grid-cols-3 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
           <div className="rounded-xl border bg-card p-3 sm:p-6">
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <Target className="hidden h-4 w-4 text-muted-foreground sm:block" />
+              <Target className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
                 Surgical Readiness
               </h3>
             </div>
-            <p className="mt-2 text-sm font-bold sm:mt-4 sm:text-lg">
+            <p className="mt-2 text-base font-bold sm:mt-4 sm:text-lg">
               {readinessLabel ?? "Not assessed"}
             </p>
             {readinessEntry?.value && !readinessEntry.value.toLowerCase().includes(readinessLabel?.toLowerCase() ?? "") && (
-              <p className="mt-1.5 hidden text-xs leading-relaxed text-muted-foreground sm:block">
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
                 {readinessEntry.value}
               </p>
             )}
@@ -290,16 +278,16 @@ export default async function CallDetailPage({
 
           <div className="rounded-xl border bg-card p-3 sm:p-6">
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <Sparkles className="hidden h-4 w-4 text-muted-foreground sm:block" />
+              <Sparkles className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
                 Premium Lens
               </h3>
             </div>
-            <p className="mt-2 text-sm font-bold sm:mt-4 sm:text-lg">
+            <p className="mt-2 text-base font-bold sm:mt-4 sm:text-lg">
               {premiumLensLabel ?? "Not assessed"}
             </p>
             {premiumLensEntry?.value && premiumLensEntry.value.split(/\s+/).length > 3 && !premiumLensEntry.value.toLowerCase().includes(premiumLensLabel?.toLowerCase() ?? "") && (
-              <p className="mt-1.5 hidden text-xs leading-relaxed text-muted-foreground sm:block">
+              <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
                 {premiumLensEntry.value}
               </p>
             )}
@@ -307,7 +295,7 @@ export default async function CallDetailPage({
 
           <div className="rounded-xl border bg-card p-3 sm:p-6">
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <Eye className="hidden h-4 w-4 text-muted-foreground sm:block" />
+              <Eye className="h-4 w-4 text-muted-foreground" />
               <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
                 Vision Impact
               </h3>
@@ -317,7 +305,7 @@ export default async function CallDetailPage({
                 <div className="mt-2 flex items-baseline gap-1 sm:mt-3 sm:gap-2">
                   <span className="text-2xl font-bold sm:text-4xl">{visionScale}</span>
                   <span className="text-[10px] font-medium text-muted-foreground sm:text-sm">/10</span>
-                  <Badge variant="outline" className="ml-auto hidden text-xs sm:inline-flex">
+                  <Badge variant="outline" className="ml-auto text-xs">
                     {visionSeverityLabel(visionScale)}
                   </Badge>
                 </div>
@@ -327,10 +315,25 @@ export default async function CallDetailPage({
                 />
               </>
             ) : (
-              <p className="mt-2 text-lg font-bold text-muted-foreground sm:mt-4">—</p>
+              <p className="mt-2 text-lg font-bold text-muted-foreground sm:mt-4">&mdash;</p>
             )}
           </div>
         </div>
+
+        {/* Key Concern — elevated to decision dashboard */}
+        {concernsEntry?.value && (
+          <div className="mt-3 rounded-xl border bg-card p-3 sm:mt-4 sm:p-5">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-muted-foreground" />
+              <h3 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
+                Key Concern
+              </h3>
+            </div>
+            <p className="mt-2 text-sm font-medium leading-relaxed sm:text-base">
+              {concernsEntry.value}
+            </p>
+          </div>
+        )}
       </section>
 
       {/* ── 3b. IOL Upgrade Propensity ── */}
@@ -346,9 +349,22 @@ export default async function CallDetailPage({
           />
           <LifestyleRadar data={radarData} />
         </div>
+        <div className="mt-4">
+          <PropensityBreakdown factors={propensity.factors} />
+        </div>
       </section>
 
-      {/* ── 4. Key Clinical Info (always visible) ── */}
+      {/* ── Surgeon's Notes ── */}
+      {event.patient?.id && (
+        <section className="mb-6">
+          <SurgeonNotes
+            patientId={event.patient.id}
+            initialNotes={event.patient.notes ?? ""}
+          />
+        </section>
+      )}
+
+      {/* ── 4. Key Clinical Info ── */}
       <section className="mb-6">
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:text-sm">
           Clinical Info
@@ -362,19 +378,7 @@ export default async function CallDetailPage({
               </h3>
             </div>
             <p className="text-sm">
-              {medicalEntry?.value || <span className="text-muted-foreground">—</span>}
-            </p>
-          </div>
-
-          <div className="rounded-lg border bg-card p-4">
-            <div className="mb-1.5 flex items-center gap-2">
-              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Concerns & Questions
-              </h3>
-            </div>
-            <p className="text-sm">
-              {concernsEntry?.value || <span className="text-muted-foreground">—</span>}
+              {medicalEntry?.value || <span className="text-muted-foreground">&mdash;</span>}
             </p>
           </div>
 
@@ -386,7 +390,7 @@ export default async function CallDetailPage({
               </h3>
             </div>
             <p className="text-sm">
-              {glassesEntry?.value || preferenceEntry?.value || <span className="text-muted-foreground">—</span>}
+              {glassesEntry?.value || preferenceEntry?.value || <span className="text-muted-foreground">&mdash;</span>}
             </p>
           </div>
 
@@ -398,10 +402,21 @@ export default async function CallDetailPage({
               </h3>
             </div>
             <p className="text-sm">
-              {laserEntry?.value || <span className="text-muted-foreground">—</span>}
+              {laserEntry?.value || <span className="text-muted-foreground">&mdash;</span>}
             </p>
           </div>
 
+          <div className="rounded-lg border bg-card p-4">
+            <div className="mb-1.5 flex items-center gap-2">
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground" />
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Concerns & Questions
+              </h3>
+            </div>
+            <p className="text-sm">
+              {concernsEntry?.value || <span className="text-muted-foreground">&mdash;</span>}
+            </p>
+          </div>
         </div>
       </section>
 
@@ -427,7 +442,7 @@ export default async function CallDetailPage({
                     <p>{activitiesEntry?.value || event.activities}</p>
                   )}
                   {!hobbiesEntry?.value && !activitiesEntry?.value && !event.activities && (
-                    <p className="text-muted-foreground">—</p>
+                    <p className="text-muted-foreground">&mdash;</p>
                   )}
                 </div>
               </div>
@@ -443,7 +458,7 @@ export default async function CallDetailPage({
                   {personalityEntry?.value && personalityEntry.value !== "null" && <p>{personalityEntry.value}</p>}
                   {sentimentValue && <p>{sentimentValue}</p>}
                   {(!personalityEntry?.value || personalityEntry.value === "null") && !sentimentValue && (
-                    <p className="text-muted-foreground">—</p>
+                    <p className="text-muted-foreground">&mdash;</p>
                   )}
                 </div>
               </div>
@@ -498,7 +513,7 @@ export default async function CallDetailPage({
                     <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       {formatLabel(key)}
                     </h3>
-                    <p className="text-sm">{entry.value || "—"}</p>
+                    <p className="text-sm">{entry.value || "&mdash;"}</p>
                   </div>
                 ))}
               </div>
@@ -509,7 +524,7 @@ export default async function CallDetailPage({
 
       <Separator className="my-6" />
 
-      {/* ── 6. Transcript & Raw Data (collapsed) ── */}
+      {/* ── 6. Transcript & Raw Data ── */}
       <Accordion type="single" collapsible className="mb-6">
         <AccordionItem value="transcript">
           <AccordionTrigger className="text-sm font-semibold">

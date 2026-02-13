@@ -2,10 +2,17 @@
 
 export type PropensityTier = "high" | "moderate" | "low" | "insufficient";
 
+export interface PropensityFactor {
+  name: string;
+  weight: number;
+  score: number | null;
+}
+
 export interface PropensityResult {
   overallScore: number;
   label: string;
   tier: PropensityTier;
+  factors: PropensityFactor[];
 }
 
 export interface PropensityInputs {
@@ -78,26 +85,29 @@ function scoreLifestyle(activities?: string | null, hobbies?: string | null): nu
 export function computePropensityScore(inputs: PropensityInputs): PropensityResult {
   const scores: { value: number; weight: number }[] = [];
 
-  if (inputs.premiumLensValue) {
-    scores.push({ value: scorePremiumLens(inputs.premiumLensValue), weight: 0.3 });
-  }
-  if (inputs.readinessValue) {
-    scores.push({ value: scoreReadiness(inputs.readinessValue), weight: 0.2 });
-  }
-  if (inputs.visionScale != null) {
-    scores.push({ value: Math.min(inputs.visionScale * 10, 100), weight: 0.2 });
-  }
-  if (inputs.glassesValue) {
-    scores.push({ value: scoreGlasses(inputs.glassesValue), weight: 0.15 });
-  }
-  const lifestyleScore = scoreLifestyle(inputs.activitiesValue, inputs.hobbiesValue);
-  if (lifestyleScore > 0) {
-    scores.push({ value: lifestyleScore, weight: 0.15 });
-  }
+  const premiumLensScore = inputs.premiumLensValue ? scorePremiumLens(inputs.premiumLensValue) : null;
+  const readinessScore = inputs.readinessValue ? scoreReadiness(inputs.readinessValue) : null;
+  const visionScore = inputs.visionScale != null ? Math.min(inputs.visionScale * 10, 100) : null;
+  const glassesScore = inputs.glassesValue ? scoreGlasses(inputs.glassesValue) : null;
+  const lifestyleScore = scoreLifestyle(inputs.activitiesValue, inputs.hobbiesValue) || null;
+
+  if (premiumLensScore != null) scores.push({ value: premiumLensScore, weight: 0.3 });
+  if (readinessScore != null) scores.push({ value: readinessScore, weight: 0.2 });
+  if (visionScore != null) scores.push({ value: visionScore, weight: 0.2 });
+  if (glassesScore != null) scores.push({ value: glassesScore, weight: 0.15 });
+  if (lifestyleScore != null) scores.push({ value: lifestyleScore, weight: 0.15 });
+
+  const factors: PropensityFactor[] = [
+    { name: "Premium Lens Interest", weight: 0.3, score: premiumLensScore },
+    { name: "Surgical Readiness", weight: 0.2, score: readinessScore },
+    { name: "Vision Impact", weight: 0.2, score: visionScore },
+    { name: "Glasses Independence", weight: 0.15, score: glassesScore },
+    { name: "Lifestyle Match", weight: 0.15, score: lifestyleScore },
+  ];
 
   // Insufficient data
   if (scores.length < 2) {
-    return { overallScore: 0, label: "Insufficient Data", tier: "insufficient" };
+    return { overallScore: 0, label: "Insufficient Data", tier: "insufficient", factors };
   }
 
   // Renormalize weights
@@ -119,7 +129,7 @@ export function computePropensityScore(inputs: PropensityInputs): PropensityResu
     label = "Low Propensity: Standard IOL Likely";
   }
 
-  return { overallScore, label, tier };
+  return { overallScore, label, tier, factors };
 }
 
 // ── Radar Data ──

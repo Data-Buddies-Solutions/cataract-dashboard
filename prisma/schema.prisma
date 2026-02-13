@@ -52,6 +52,9 @@ model WebhookEvent {
   videoUrl           String?
   videoStatus        String?
 
+  // Review status
+  reviewedAt      DateTime?
+
   // Patient relationship
   patientId       String?
   patient         Patient? @relation(fields: [patientId], references: [id])
