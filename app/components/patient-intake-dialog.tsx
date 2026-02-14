@@ -26,6 +26,12 @@ interface PatientRow {
   doctor?: string;
 }
 
+interface ImportResult {
+  imported: number;
+  skippedDuplicates: number;
+  skippedInvalid: number;
+}
+
 const COLUMN_ALIASES: Record<string, keyof PatientRow> = {
   firstname: "firstName",
   first_name: "firstName",
@@ -102,11 +108,12 @@ export function PatientIntakeDialog() {
   const [apptDate, setApptDate] = useState("");
   const [doctor, setDoctor] = useState("");
   const [manualSaving, setManualSaving] = useState(false);
+  const [manualError, setManualError] = useState<string | null>(null);
 
   // CSV state
   const [parsedRows, setParsedRows] = useState<PatientRow[]>([]);
   const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<number | null>(null);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   function resetManual() {
     setFirstName("");
@@ -120,6 +127,7 @@ export function PatientIntakeDialog() {
   async function handleManualSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!firstName.trim() && !lastName.trim()) return;
+    setManualError(null);
     setManualSaving(true);
     try {
       const res = await fetch("/api/patients", {
@@ -138,6 +146,9 @@ export function PatientIntakeDialog() {
         resetManual();
         setOpen(false);
         router.refresh();
+      } else {
+        const err = (await res.json().catch(() => null)) as { error?: string } | null;
+        setManualError(err?.error ?? "Failed to add patient");
       }
     } finally {
       setManualSaving(false);
@@ -195,8 +206,8 @@ export function PatientIntakeDialog() {
         body: JSON.stringify({ patients: parsedRows }),
       });
       if (res.ok) {
-        const data = await res.json();
-        setImportResult(data.imported);
+        const data = (await res.json()) as ImportResult;
+        setImportResult(data);
         setParsedRows([]);
         router.refresh();
       }
@@ -285,6 +296,7 @@ export function PatientIntakeDialog() {
               <Button type="submit" disabled={manualSaving || (!firstName.trim() && !lastName.trim())}>
                 {manualSaving ? "Saving..." : "Add Patient"}
               </Button>
+              {manualError && <p className="text-sm text-red-600">{manualError}</p>}
             </form>
           </TabsContent>
 
@@ -348,9 +360,24 @@ export function PatientIntakeDialog() {
               )}
 
               {importResult !== null && (
-                <p className="text-sm text-medical-success">
-                  Successfully imported {importResult} patient{importResult !== 1 ? "s" : ""}.
-                </p>
+                <div className="space-y-1 text-sm">
+                  <p className="text-medical-success">
+                    Imported {importResult.imported} patient
+                    {importResult.imported !== 1 ? "s" : ""}.
+                  </p>
+                  {importResult.skippedDuplicates > 0 && (
+                    <p className="text-muted-foreground">
+                      Skipped {importResult.skippedDuplicates} duplicate
+                      {importResult.skippedDuplicates !== 1 ? "s" : ""}.
+                    </p>
+                  )}
+                  {importResult.skippedInvalid > 0 && (
+                    <p className="text-muted-foreground">
+                      Skipped {importResult.skippedInvalid} invalid row
+                      {importResult.skippedInvalid !== 1 ? "s" : ""}.
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </TabsContent>

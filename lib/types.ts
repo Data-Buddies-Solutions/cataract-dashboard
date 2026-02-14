@@ -1,11 +1,37 @@
-export type CallStatus = "pending" | "queued" | "called" | "completed";
+export type CallStatus =
+  | "pending"
+  | "queued"
+  | "retry"
+  | "answered"
+  | "completed";
 
 export const CALL_STATUS_LABELS: Record<CallStatus, string> = {
   pending: "Pending",
   queued: "Queued",
-  called: "Called",
+  retry: "Needs Retry",
+  answered: "Answered",
   completed: "Completed",
 };
+
+export function normalizeCallStatus(status: string): CallStatus {
+  if (status === "called") return "answered";
+  if (
+    status === "pending" ||
+    status === "queued" ||
+    status === "retry" ||
+    status === "answered" ||
+    status === "completed"
+  ) {
+    return status;
+  }
+  return "pending";
+}
+
+export function getCallStatusLabel(status: string): string {
+  if (status === "called") return CALL_STATUS_LABELS.answered;
+  const normalized = normalizeCallStatus(status);
+  return CALL_STATUS_LABELS[normalized];
+}
 
 export interface TranscriptTurn {
   role: string;

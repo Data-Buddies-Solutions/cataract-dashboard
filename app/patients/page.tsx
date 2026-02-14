@@ -4,7 +4,8 @@ import { VisionScaleBadge } from "@/app/components/vision-scale-badge";
 import { PatientIntakeDialog } from "@/app/components/patient-intake-dialog";
 import { CallStatusActions } from "@/app/components/call-status-actions";
 import { Badge } from "@/components/ui/badge";
-import { CALL_STATUS_LABELS, type CallStatus } from "@/lib/types";
+import { getCallStatusLabel } from "@/lib/types";
+import { formatDateET } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -24,30 +25,12 @@ export default async function PatientsPage() {
     },
   });
 
-  const untaggedCount = await prisma.webhookEvent.count({
-    where: {
-      type: "post_call_transcription",
-      patientId: null,
-    },
-  });
-
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Patients</h1>
         <PatientIntakeDialog />
       </div>
-
-      {untaggedCount > 0 && (
-        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
-          <strong>{untaggedCount}</strong> untagged call
-          {untaggedCount !== 1 ? "s" : ""} — assign patients from the{" "}
-          <Link href="/calls" className="underline hover:text-amber-900 dark:hover:text-amber-200">
-            Call History
-          </Link>{" "}
-          page.
-        </div>
-      )}
 
       {patients.length === 0 ? (
         <p className="text-muted-foreground">
@@ -111,7 +94,7 @@ export default async function PatientsPage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                       {patient.appointmentDate
-                        ? patient.appointmentDate.toLocaleDateString()
+                        ? formatDateET(patient.appointmentDate)
                         : "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
@@ -125,13 +108,13 @@ export default async function PatientsPage() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <Badge variant="outline">
-                        {CALL_STATUS_LABELS[patient.callStatus as CallStatus] ?? patient.callStatus}
+                        {getCallStatusLabel(patient.callStatus)}
                       </Badge>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <CallStatusActions
                         patientId={patient.id}
-                        currentStatus={patient.callStatus as CallStatus}
+                        currentStatus={patient.callStatus}
                       />
                     </td>
                   </tr>

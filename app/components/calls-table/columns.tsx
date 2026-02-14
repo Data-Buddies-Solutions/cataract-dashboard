@@ -8,6 +8,7 @@ import { LocalTime } from "@/app/components/local-time";
 
 export type CallRow = {
   id: string;
+  searchName: string;
   collectedName: string | null;
   patientName: string | null;
   eventTimestamp: number;
@@ -25,7 +26,7 @@ function formatDuration(secs: number): string {
 
 export const columns: ColumnDef<CallRow>[] = [
   {
-    accessorKey: "collectedName",
+    accessorKey: "searchName",
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -36,16 +37,12 @@ export const columns: ColumnDef<CallRow>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const name =
-        row.original.collectedName ||
-        row.original.patientName ||
-        "Unknown";
       return (
         <Link
           href={`/calls/${row.original.id}`}
           className="font-medium hover:text-foreground hover:underline"
         >
-          {name}
+          {row.original.searchName}
         </Link>
       );
     },

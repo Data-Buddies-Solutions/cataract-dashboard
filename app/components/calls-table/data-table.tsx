@@ -55,10 +55,10 @@ export function DataTable<TData, TValue>({
         <Input
           placeholder="Filter by patient name..."
           value={
-            (table.getColumn("collectedName")?.getFilterValue() as string) ?? ""
+            (table.getColumn("searchName")?.getFilterValue() as string) ?? ""
           }
           onChange={(e) =>
-            table.getColumn("collectedName")?.setFilterValue(e.target.value)
+            table.getColumn("searchName")?.setFilterValue(e.target.value)
           }
           className="max-w-sm"
         />

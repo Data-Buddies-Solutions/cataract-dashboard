@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { AnalyticsStatCard } from "@/app/components/analytics-stat-card";
 import { CallVolumeChart } from "@/app/components/charts/call-volume-chart";
@@ -18,6 +19,27 @@ import {
 
 export const dynamic = "force-dynamic";
 
+type RangeFilter = "7d" | "30d" | "90d" | "all";
+
+function parseRange(value: string | undefined): RangeFilter {
+  return value === "7d" || value === "30d" || value === "90d" || value === "all"
+    ? value
+    : "30d";
+}
+
+function getRangeStart(range: RangeFilter): Date | null {
+  if (range === "all") return null;
+  const now = new Date();
+  const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+}
+
+function buttonClass(active: boolean): string {
+  return active
+    ? "rounded border border-foreground px-2 py-1 text-xs font-medium text-foreground"
+    : "rounded border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground";
+}
+
 function toDateKey(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
@@ -29,9 +51,24 @@ function parseActivities(raw: string): string[] {
     .filter((s) => s.length > 0);
 }
 
-export default async function AnalyticsPage() {
+export default async function AnalyticsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const params = await searchParams;
+  const range = parseRange(params.range);
+  const rangeStart = getRangeStart(range);
+
+  const where: { type: string; createdAt?: { gte: Date } } = {
+    type: "post_call_transcription",
+  };
+  if (rangeStart) {
+    where.createdAt = { gte: rangeStart };
+  }
+
   const events = await prisma.webhookEvent.findMany({
-    where: { type: "post_call_transcription" },
+    where,
     orderBy: { createdAt: "asc" },
   });
 
@@ -226,6 +263,23 @@ export default async function AnalyticsPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           Aggregate insights across all patient calls
         </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Range
+          </span>
+          <Link href="/analytics?range=7d" className={buttonClass(range === "7d")}>
+            7d
+          </Link>
+          <Link href="/analytics?range=30d" className={buttonClass(range === "30d")}>
+            30d
+          </Link>
+          <Link href="/analytics?range=90d" className={buttonClass(range === "90d")}>
+            90d
+          </Link>
+          <Link href="/analytics?range=all" className={buttonClass(range === "all")}>
+            All
+          </Link>
+        </div>
       </div>
 
       {/* Summary Stats */}

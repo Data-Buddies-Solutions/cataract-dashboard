@@ -1,12 +1,15 @@
+import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { CallStatusActions } from "@/app/components/call-status-actions";
-import type { CallStatus } from "@/lib/types";
+import { getCallStatusLabel, normalizeCallStatus } from "@/lib/types";
+import { Badge } from "@/components/ui/badge";
+import { formatDateET } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
 export default async function QueuePage() {
   const patients = await prisma.patient.findMany({
-    where: { callStatus: "queued" },
+    where: { callStatus: { in: ["queued", "retry"] } },
     orderBy: [{ appointmentDate: "asc" }, { lastName: "asc" }],
   });
 
@@ -15,17 +18,17 @@ export default async function QueuePage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold">Call Queue</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {patients.length} patient{patients.length !== 1 ? "s" : ""} queued for
-          AI calls
+          {patients.length} patient{patients.length !== 1 ? "s" : ""} needing
+          outreach calls
         </p>
       </div>
 
       {patients.length === 0 ? (
         <p className="text-muted-foreground">
           No patients in the queue. Add patients to the queue from the{" "}
-          <a href="/patients" className="underline hover:text-foreground">
+          <Link href="/patients" className="underline hover:text-foreground">
             Patients
-          </a>{" "}
+          </Link>{" "}
           page.
         </p>
       ) : (
@@ -46,6 +49,9 @@ export default async function QueuePage() {
                   Doctor
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                  Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Actions
                 </th>
               </tr>
@@ -60,28 +66,39 @@ export default async function QueuePage() {
                 return (
                   <tr key={patient.id} className="hover:bg-muted">
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-foreground">
-                      <a
+                      <Link
                         href={`/patients/${patient.id}`}
                         className="hover:underline"
                       >
                         {displayName}
-                      </a>
+                      </Link>
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                       {patient.phone || "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                       {patient.appointmentDate
-                        ? patient.appointmentDate.toLocaleDateString()
+                        ? formatDateET(patient.appointmentDate)
                         : "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-muted-foreground">
                       {patient.doctor || "—"}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm">
+                      <Badge
+                        variant={
+                          normalizeCallStatus(patient.callStatus) === "retry"
+                            ? "destructive"
+                            : "outline"
+                        }
+                      >
+                        {getCallStatusLabel(patient.callStatus)}
+                      </Badge>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm">
                       <CallStatusActions
                         patientId={patient.id}
-                        currentStatus={patient.callStatus as CallStatus}
+                        currentStatus={patient.callStatus}
                       />
                     </td>
                   </tr>

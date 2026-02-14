@@ -18,7 +18,7 @@ function dob(yearsAgo: number, monthOffset = 0) {
 async function main() {
   console.log("Seeding database...");
 
-  // ── Patient 1: High propensity, unreviewed ──
+  // ── Patient 1: High propensity, answered ──
   const p1 = await prisma.patient.upsert({
     where: { id: "seed-patient-1" },
     update: {},
@@ -32,7 +32,7 @@ async function main() {
       dateOfBirth: dob(72),
       appointmentDate: todayAt(9, 0),
       doctor: "Dr. Chen",
-      callStatus: "called",
+      callStatus: "answered",
     },
   });
 
@@ -153,7 +153,7 @@ async function main() {
     },
   });
 
-  // ── Patient 2: Moderate propensity, unreviewed ──
+  // ── Patient 2: Moderate propensity, answered ──
   const p2 = await prisma.patient.upsert({
     where: { id: "seed-patient-2" },
     update: {},
@@ -167,7 +167,7 @@ async function main() {
       dateOfBirth: dob(67, -3),
       appointmentDate: todayAt(10, 30),
       doctor: "Dr. Chen",
-      callStatus: "called",
+      callStatus: "answered",
     },
   });
 
@@ -276,7 +276,7 @@ async function main() {
     },
   });
 
-  // ── Patient 3: Already reviewed ──
+  // ── Patient 3: Completed workflow ──
   const p3 = await prisma.patient.upsert({
     where: { id: "seed-patient-3" },
     update: {},
@@ -290,7 +290,7 @@ async function main() {
       dateOfBirth: dob(78, -6),
       appointmentDate: todayAt(14, 0),
       doctor: "Dr. Chen",
-      callStatus: "called",
+      callStatus: "completed",
       notes: "Long-time patient. Prefers gentle communication. Daughter usually joins appointments.",
     },
   });
@@ -311,7 +311,6 @@ async function main() {
       activities: "reading, watching TV, knitting",
       visionPreference: "Just wants to see clearly again",
       patientId: p3.id,
-      reviewedAt: new Date(),
       data: {
         metadata: {
           call_duration_secs: 298,

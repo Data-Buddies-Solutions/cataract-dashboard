@@ -3,13 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CALL_STATUS_LABELS, type CallStatus } from "@/lib/types";
+import {
+  CALL_STATUS_LABELS,
+  normalizeCallStatus,
+  type CallStatus,
+} from "@/lib/types";
 
 const statusTransitions: Record<CallStatus, CallStatus[]> = {
   pending: ["queued"],
-  queued: ["called", "pending"],
-  called: ["completed", "queued"],
-  completed: ["pending"],
+  queued: ["pending"],
+  retry: ["queued", "completed"],
+  answered: ["completed", "queued"],
+  completed: ["queued"],
 };
 
 export function CallStatusActions({
@@ -17,12 +22,13 @@ export function CallStatusActions({
   currentStatus,
 }: {
   patientId: string;
-  currentStatus: CallStatus;
+  currentStatus: string;
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
-  const nextStatuses = statusTransitions[currentStatus] ?? [];
+  const normalizedStatus = normalizeCallStatus(currentStatus);
+  const nextStatuses = statusTransitions[normalizedStatus] ?? [];
 
   async function updateStatus(newStatus: CallStatus) {
     setSaving(true);

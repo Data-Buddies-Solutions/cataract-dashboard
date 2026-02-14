@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+function normalizeName(value: string): string {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function normalizePhone(value: string | undefined): string | null {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return null;
+  if (digits.length === 11 && digits.startsWith("1")) return digits.slice(1);
+  return digits;
+}
+
 export async function GET() {
   const patients = await prisma.patient.findMany({
     orderBy: [{ lastName: "asc" }, { firstName: "asc" }],
@@ -33,13 +45,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedComputedName = normalizeName(computedName);
+    const normalizedPhone = normalizePhone(phone);
+    const parsedDobCandidate = dateOfBirth ? new Date(dateOfBirth) : null;
+    const parsedDob =
+      parsedDobCandidate && !Number.isNaN(parsedDobCandidate.getTime())
+        ? parsedDobCandidate
+        : null;
+    const dobKey = parsedDob && !Number.isNaN(parsedDob.getTime())
+      ? parsedDob.toISOString().slice(0, 10)
+      : null;
+
+    const existing = await prisma.patient.findMany({
+      select: {
+        id: true,
+        name: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        dateOfBirth: true,
+      },
+    });
+
+    const duplicate = existing.find((patient) => {
+      const existingPhone = normalizePhone(patient.phone ?? undefined);
+      if (normalizedPhone && existingPhone && normalizedPhone === existingPhone) {
+        return true;
+      }
+
+      const existingDisplayName =
+        [patient.firstName, patient.lastName].filter(Boolean).join(" ").trim() ||
+        patient.name;
+      const existingNormalizedName = normalizeName(existingDisplayName);
+
+      if (existingNormalizedName !== normalizedComputedName) return false;
+      if (!dobKey) return true;
+
+      const existingDobKey = patient.dateOfBirth
+        ? patient.dateOfBirth.toISOString().slice(0, 10)
+        : null;
+      return existingDobKey === dobKey;
+    });
+
+    if (duplicate) {
+      return NextResponse.json(
+        { error: "Patient already exists" },
+        { status: 409 }
+      );
+    }
+
     const patient = await prisma.patient.create({
       data: {
         name: computedName,
         firstName: fn || null,
         lastName: ln || null,
         phone: phone?.trim() || null,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        dateOfBirth: parsedDob,
         appointmentDate: appointmentDate ? new Date(appointmentDate) : null,
         doctor: doctor?.trim() || null,
         notes: notes?.trim() || null,

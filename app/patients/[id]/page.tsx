@@ -9,7 +9,8 @@ import { VisionScaleBadge } from "@/app/components/vision-scale-badge";
 import { VisionScaleOverTimeChart } from "./vision-scale-over-time-chart";
 import { CallStatusActions } from "@/app/components/call-status-actions";
 import { Badge } from "@/components/ui/badge";
-import { CALL_STATUS_LABELS, type CallStatus } from "@/lib/types";
+import { getCallStatusLabel } from "@/lib/types";
+import { formatDateET } from "@/lib/time";
 
 function formatDuration(secs: number): string {
   const m = Math.floor(secs / 60);
@@ -80,7 +81,7 @@ export default async function PatientDetailPage({
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">{displayName}</h1>
           <Badge variant="outline">
-            {CALL_STATUS_LABELS[patient.callStatus as CallStatus] ?? patient.callStatus}
+            {getCallStatusLabel(patient.callStatus)}
           </Badge>
         </div>
         {patient.phone && (
@@ -88,10 +89,10 @@ export default async function PatientDetailPage({
         )}
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
           {patient.dateOfBirth && (
-            <span>DOB: {patient.dateOfBirth.toLocaleDateString()}</span>
+            <span>DOB: {formatDateET(patient.dateOfBirth)}</span>
           )}
           {patient.appointmentDate && (
-            <span>Appointment: {patient.appointmentDate.toLocaleDateString()}</span>
+            <span>Appointment: {formatDateET(patient.appointmentDate)}</span>
           )}
           {patient.doctor && <span>Doctor: {patient.doctor}</span>}
         </div>
@@ -101,7 +102,7 @@ export default async function PatientDetailPage({
         <div className="mt-3">
           <CallStatusActions
             patientId={patient.id}
-            currentStatus={patient.callStatus as CallStatus}
+            currentStatus={patient.callStatus}
           />
         </div>
       </div>
@@ -124,7 +125,7 @@ export default async function PatientDetailPage({
         />
         <AnalyticsStatCard
           label="Most Recent Call"
-          value={lastCall ? lastCall.createdAt.toLocaleDateString() : "—"}
+          value={lastCall ? formatDateET(lastCall.createdAt) : "—"}
           icon={Calendar}
           iconColorClass="bg-medical-purple-light text-medical-purple"
           bgClass="bg-medical-purple-light/30"

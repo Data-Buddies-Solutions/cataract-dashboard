@@ -28,7 +28,6 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { TranscriptPanel } from "./transcript-panel";
-import { ReviewButton } from "./review-button";
 import { SurgeonNotes } from "./surgeon-notes";
 import type {
   EventData,
@@ -172,17 +171,13 @@ export default async function CallDetailPage({
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
-      <div className="mb-4 flex items-center justify-between sm:mb-6">
+      <div className="mb-4 sm:mb-6">
         <Link
           href="/calls"
           className="text-sm text-muted-foreground hover:text-foreground"
         >
           &larr; Back to calls
         </Link>
-        <ReviewButton
-          callId={event.id}
-          initialReviewedAt={event.reviewedAt?.toISOString() ?? null}
-        />
       </div>
 
       {/* ── 1. Hero Banner ── */}

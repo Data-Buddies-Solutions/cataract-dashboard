@@ -2,7 +2,6 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import {
   AlertTriangle,
-  CheckCircle2,
   Target,
   Sparkles,
   Eye,
@@ -11,6 +10,7 @@ import {
 } from "lucide-react";
 import type { EventData } from "@/lib/types";
 import { extractCallInsights } from "@/lib/extract-call-insights";
+import { formatDateET, getEasternDayRange } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -40,8 +40,7 @@ const tierLabel: Record<string, string> = {
 
 export default async function DashboardPage() {
   const now = new Date();
-  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  const { start: startOfDay, end: endOfDay } = getEasternDayRange(now);
 
   const patients = await prisma.patient.findMany({
     where: {
@@ -59,19 +58,7 @@ export default async function DashboardPage() {
     orderBy: { appointmentDate: "asc" },
   });
 
-  // Separate reviewed vs unreviewed
-  const unreviewed: typeof patients = [];
-  const reviewed: typeof patients = [];
-  for (const patient of patients) {
-    const latestCall = patient.calls[0];
-    if (latestCall?.reviewedAt) {
-      reviewed.push(patient);
-    } else {
-      unreviewed.push(patient);
-    }
-  }
-
-  const dateStr = now.toLocaleDateString("en-US", {
+  const dateStr = formatDateET(now, {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -102,26 +89,11 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* Unreviewed patients */}
-      {unreviewed.length > 0 && (
+      {patients.length > 0 && (
         <div className="space-y-3">
-          {unreviewed.map((patient) => (
+          {patients.map((patient) => (
             <PatientCard key={patient.id} patient={patient} />
           ))}
-        </div>
-      )}
-
-      {/* Reviewed patients */}
-      {reviewed.length > 0 && (
-        <div className="mt-6">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Already Reviewed
-          </h2>
-          <div className="space-y-3 opacity-60">
-            {reviewed.map((patient) => (
-              <PatientCard key={patient.id} patient={patient} />
-            ))}
-          </div>
         </div>
       )}
     </main>
@@ -161,7 +133,6 @@ function PatientCard({ patient }: { patient: PatientWithCalls }) {
 
   const callData = latestCall.data as EventData;
   const insights = extractCallInsights(callData, latestCall, patient);
-  const isReviewed = !!latestCall.reviewedAt;
 
   return (
     <Link
@@ -175,9 +146,6 @@ function PatientCard({ patient }: { patient: PatientWithCalls }) {
             <h3 className="truncate font-semibold">{displayName}</h3>
             {age != null && (
               <span className="shrink-0 text-sm text-muted-foreground">{age}y</span>
-            )}
-            {isReviewed && (
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-medical-success" />
             )}
           </div>
 

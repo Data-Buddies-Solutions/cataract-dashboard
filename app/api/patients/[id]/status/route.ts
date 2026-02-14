@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
-const VALID_STATUSES = ["pending", "queued", "called", "completed"];
+const VALID_STATUSES = ["pending", "queued", "retry", "answered", "completed"];
 
 export async function PATCH(
   request: NextRequest,
