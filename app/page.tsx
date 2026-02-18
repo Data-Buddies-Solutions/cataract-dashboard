@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   Target,
   Sparkles,
-  Eye,
   MessageCircle,
   Briefcase,
 } from "lucide-react";
@@ -169,12 +168,11 @@ function PatientCard({ patient }: { patient: PatientWithCalls }) {
               </div>
             )}
 
-            {/* Vision Impact */}
-            {insights.visionScale != null && (
+            {/* Premium IOL */}
+            {insights.premiumIOLLabel && (
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Eye className="h-3 w-3" />
-                <span>{insights.visionScale}/10</span>
-                <span className="text-xs">({insights.visionSeverity})</span>
+                <Sparkles className="h-3 w-3" />
+                <span>{insights.premiumIOLLabel}</span>
               </div>
             )}
 
@@ -183,14 +181,6 @@ function PatientCard({ patient }: { patient: PatientWithCalls }) {
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Target className="h-3 w-3" />
                 <span>{insights.readinessLabel}</span>
-              </div>
-            )}
-
-            {/* Premium Lens */}
-            {insights.premiumLensLabel && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Sparkles className="h-3 w-3" />
-                <span>{insights.premiumLensLabel}</span>
               </div>
             )}
           </div>

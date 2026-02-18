@@ -16,12 +16,14 @@ export interface PropensityResult {
 }
 
 export interface PropensityInputs {
-  premiumLensValue?: string | null;
+  premiumIOLValue?: string | null;
   readinessValue?: string | null;
-  visionScale?: number | null;
-  glassesValue?: string | null;
-  activitiesValue?: string | null;
+  laserInterestValue?: string | null;
   hobbiesValue?: string | null;
+  grandchildrenValue?: string | null;
+  occupationValue?: string | null;
+  sentimentValue?: string | null;
+  personalityValue?: string | null;
 }
 
 export interface RadarAxisData {
@@ -30,18 +32,55 @@ export interface RadarAxisData {
   iolStrengths: number;
 }
 
-// ── Premium Lens Interest Score ──
-function scorePremiumLens(value: string): number {
-  const lower = value.toLowerCase();
+// ── Premium IOL Interest Score (bucket mapping) ──
+const PREMIUM_IOL_BUCKETS: Record<string, number> = {
+  "highly interested": 95,
+  "leaning interest": 75,
+  "cost concerned": 60,
+  "neutral": 50,
+  "not interested": 15,
+};
+
+function scorePremiumIOL(value: string): number | null {
+  const lower = value.toLowerCase().trim();
+  if (lower === "unknown") return null;
+  for (const [bucket, score] of Object.entries(PREMIUM_IOL_BUCKETS)) {
+    if (lower.includes(bucket)) return score;
+  }
+  // Fallback regex for free-text
   if (/\b(yes|very interested|definitely|absolutely|high)\b/.test(lower)) return 95;
-  if (/\b(interested|want|keen|prefer premium|leaning)\b/.test(lower)) return 80;
-  if (/\b(maybe|considering|open|possibly|curious|unsure)\b/.test(lower)) return 55;
-  if (/\b(not sure|undecided|need more)\b/.test(lower)) return 40;
+  if (/\b(interested|want|keen|leaning)\b/.test(lower)) return 75;
+  if (/\b(cost|afford|budget|price)\b/.test(lower)) return 60;
+  if (/\b(maybe|considering|open|possibly|curious|unsure)\b/.test(lower)) return 50;
   if (/\b(no|not interested|declined|standard|basic)\b/.test(lower)) return 15;
-  return 50; // neutral default
+  return 50;
 }
 
-// ── Surgical Readiness Score ──
+// ── Femtosecond Laser Interest Score (bucket mapping) ──
+const LASER_INTEREST_BUCKETS: Record<string, number> = {
+  "highly interested": 95,
+  "passively receptive": 65,
+  "cost hesitant": 55,
+  "skeptical": 30,
+  "not interested": 15,
+};
+
+function scoreLaserInterest(value: string): number | null {
+  const lower = value.toLowerCase().trim();
+  if (lower === "unknown") return null;
+  for (const [bucket, score] of Object.entries(LASER_INTEREST_BUCKETS)) {
+    if (lower.includes(bucket)) return score;
+  }
+  // Fallback regex
+  if (/\b(yes|interested|want|keen)\b/.test(lower)) return 95;
+  if (/\b(open|receptive|maybe)\b/.test(lower)) return 65;
+  if (/\b(cost|afford|expensive)\b/.test(lower)) return 55;
+  if (/\b(skeptic|doubt|unsure|hesitant)\b/.test(lower)) return 30;
+  if (/\b(no|not interested|declined)\b/.test(lower)) return 15;
+  return 50;
+}
+
+// ── Surgical Readiness Score (unchanged) ──
 function scoreReadiness(value: string): number {
   const lower = value.toLowerCase();
   if (/\b(ready|scheduled|decided|yes|asap|immediately)\b/.test(lower)) return 90;
@@ -52,28 +91,21 @@ function scoreReadiness(value: string): number {
   return 50;
 }
 
-// ── Glasses Independence Score ──
-function scoreGlasses(value: string): number {
-  const lower = value.toLowerCase();
-  if (/\b(no glasses|without glasses|glasses.?free|independence|hate glasses)\b/.test(lower)) return 90;
-  if (/\b(reduce|minimal|less dependent|prefer not)\b/.test(lower)) return 75;
-  if (/\b(don't mind|okay with|fine with|accept)\b/.test(lower)) return 40;
-  if (/\b(reading glasses ok|some glasses|reading only)\b/.test(lower)) return 30;
-  return 50;
-}
-
-// ── Lifestyle Activity Score ──
-const ACTIVE_KEYWORDS = [
+// ── Lifestyle Match Score (hobbies + grandchildren + occupation) ──
+const LIFESTYLE_KEYWORDS = [
   "golf", "tennis", "swim", "hik", "run", "cycl", "travel", "driv",
   "read", "comput", "screen", "garden", "cook", "paint", "photograph",
   "fish", "yoga", "gym", "exercise", "sport", "outdoor", "active",
   "craft", "sew", "knit", "bird", "hunt", "sail", "ski",
+  "grandchild", "grandkid", "grandson", "granddaughter",
+  "teacher", "nurse", "engineer", "doctor", "pilot", "driver",
+  "mechanic", "artist", "musician", "writer", "accountant",
 ];
 
-function scoreLifestyle(activities?: string | null, hobbies?: string | null): number {
-  const combined = `${activities ?? ""} ${hobbies ?? ""}`.toLowerCase();
-  if (!combined.trim()) return 0; // no data
-  const matchCount = ACTIVE_KEYWORDS.filter((kw) => combined.includes(kw)).length;
+function scoreLifestyle(hobbies?: string | null, grandchildren?: string | null, occupation?: string | null): number {
+  const combined = `${hobbies ?? ""} ${grandchildren ?? ""} ${occupation ?? ""}`.toLowerCase();
+  if (!combined.trim()) return 0;
+  const matchCount = LIFESTYLE_KEYWORDS.filter((kw) => combined.includes(kw)).length;
   if (matchCount >= 5) return 95;
   if (matchCount >= 3) return 80;
   if (matchCount >= 2) return 65;
@@ -81,28 +113,50 @@ function scoreLifestyle(activities?: string | null, hobbies?: string | null): nu
   return 25;
 }
 
+// ── Patient Engagement Score (sentiment + personality) ──
+const POSITIVE_KEYWORDS = [
+  "positive", "happy", "engaged", "cooperative", "friendly", "warm",
+  "enthusiastic", "optimistic", "pleasant", "open", "curious", "motivated",
+  "agreeable", "patient", "calm", "receptive",
+];
+const NEGATIVE_KEYWORDS = [
+  "negative", "angry", "frustrated", "hostile", "impatient", "anxious",
+  "resistant", "dismissive", "rude", "uncooperative", "aggressive",
+  "pessimistic", "combative", "difficult", "guarded",
+];
+
+function scorePatientEngagement(sentiment?: string | null, personality?: string | null): number | null {
+  const combined = `${sentiment ?? ""} ${personality ?? ""}`.toLowerCase();
+  if (!combined.trim()) return null;
+  const posCount = POSITIVE_KEYWORDS.filter((kw) => combined.includes(kw)).length;
+  const negCount = NEGATIVE_KEYWORDS.filter((kw) => combined.includes(kw)).length;
+  if (posCount === 0 && negCount === 0) return 50; // neutral
+  const netScore = 50 + (posCount - negCount) * 15;
+  return Math.max(10, Math.min(95, netScore));
+}
+
 // ── Main Scoring Function ──
 export function computePropensityScore(inputs: PropensityInputs): PropensityResult {
   const scores: { value: number; weight: number }[] = [];
 
-  const premiumLensScore = inputs.premiumLensValue ? scorePremiumLens(inputs.premiumLensValue) : null;
+  const premiumIOLScore = inputs.premiumIOLValue ? scorePremiumIOL(inputs.premiumIOLValue) : null;
   const readinessScore = inputs.readinessValue ? scoreReadiness(inputs.readinessValue) : null;
-  const visionScore = inputs.visionScale != null ? Math.min(inputs.visionScale * 10, 100) : null;
-  const glassesScore = inputs.glassesValue ? scoreGlasses(inputs.glassesValue) : null;
-  const lifestyleScore = scoreLifestyle(inputs.activitiesValue, inputs.hobbiesValue) || null;
+  const laserScore = inputs.laserInterestValue ? scoreLaserInterest(inputs.laserInterestValue) : null;
+  const lifestyleScore = scoreLifestyle(inputs.hobbiesValue, inputs.grandchildrenValue, inputs.occupationValue) || null;
+  const engagementScore = scorePatientEngagement(inputs.sentimentValue, inputs.personalityValue);
 
-  if (premiumLensScore != null) scores.push({ value: premiumLensScore, weight: 0.3 });
+  if (premiumIOLScore != null) scores.push({ value: premiumIOLScore, weight: 0.35 });
   if (readinessScore != null) scores.push({ value: readinessScore, weight: 0.2 });
-  if (visionScore != null) scores.push({ value: visionScore, weight: 0.2 });
-  if (glassesScore != null) scores.push({ value: glassesScore, weight: 0.15 });
-  if (lifestyleScore != null) scores.push({ value: lifestyleScore, weight: 0.15 });
+  if (laserScore != null) scores.push({ value: laserScore, weight: 0.15 });
+  if (lifestyleScore != null) scores.push({ value: lifestyleScore, weight: 0.2 });
+  if (engagementScore != null) scores.push({ value: engagementScore, weight: 0.1 });
 
   const factors: PropensityFactor[] = [
-    { name: "Premium Lens Interest", weight: 0.3, score: premiumLensScore },
+    { name: "Premium IOL Interest", weight: 0.35, score: premiumIOLScore },
     { name: "Surgical Readiness", weight: 0.2, score: readinessScore },
-    { name: "Vision Impact", weight: 0.2, score: visionScore },
-    { name: "Glasses Independence", weight: 0.15, score: glassesScore },
-    { name: "Lifestyle Match", weight: 0.15, score: lifestyleScore },
+    { name: "Femtosecond Laser", weight: 0.15, score: laserScore },
+    { name: "Lifestyle Match", weight: 0.2, score: lifestyleScore },
+    { name: "Patient Engagement", weight: 0.1, score: engagementScore },
   ];
 
   // Insufficient data
@@ -132,13 +186,12 @@ export function computePropensityScore(inputs: PropensityInputs): PropensityResu
   return { overallScore, label, tier, factors };
 }
 
-// ── Radar Data ──
+// ── Radar Data — New 5 Axes ──
 
-const READING_KEYWORDS = ["read", "book", "newspaper", "magazine", "kindle", "close.?up", "fine print"];
-const NIGHT_KEYWORDS = ["driv", "night", "headlight", "glare", "dark", "evening", "halos"];
-const COMPUTER_KEYWORDS = ["comput", "screen", "laptop", "phone", "tablet", "monitor", "digital", "work"];
-const COST_KEYWORDS = ["cost", "price", "afford", "budget", "invest", "worth", "pay", "premium", "money", "insurance"];
 const ACTIVE_LIFESTYLE_KEYWORDS = ["golf", "tennis", "swim", "hik", "run", "cycl", "travel", "outdoor", "sport", "exercise", "gym", "active", "yoga", "garden"];
+const NEAR_VISION_KEYWORDS = ["read", "book", "newspaper", "magazine", "kindle", "close.?up", "fine print", "craft", "sew", "knit", "needlework", "grandchild", "grandkid"];
+const DIGITAL_WORK_KEYWORDS = ["comput", "screen", "laptop", "phone", "tablet", "monitor", "digital", "work", "office", "desk", "engineer", "accountant", "program"];
+const SOCIAL_FAMILY_KEYWORDS = ["grandchild", "grandkid", "grandson", "granddaughter", "family", "friend", "social", "church", "volunteer", "community", "club"];
 
 function keywordScore(text: string, keywords: string[]): number {
   if (!text.trim()) return 0;
@@ -150,30 +203,44 @@ function keywordScore(text: string, keywords: string[]): number {
   return 0;
 }
 
+function scoreIndependence(premiumIOL?: string | null, readiness?: string | null): number {
+  let score = 0;
+  let factors = 0;
+  if (premiumIOL) {
+    const s = scorePremiumIOL(premiumIOL);
+    if (s != null) { score += s; factors++; }
+  }
+  if (readiness) {
+    score += scoreReadiness(readiness);
+    factors++;
+  }
+  return factors > 0 ? Math.round(score / factors) : 0;
+}
+
 export function computeRadarData(inputs: PropensityInputs): RadarAxisData[] {
   const combined = [
-    inputs.activitiesValue,
     inputs.hobbiesValue,
-    inputs.glassesValue,
-    inputs.premiumLensValue,
+    inputs.grandchildrenValue,
+    inputs.occupationValue,
+    inputs.premiumIOLValue,
     inputs.readinessValue,
   ]
     .filter(Boolean)
     .join(" ");
 
-  const defaultVal = 30; // fallback when no relevant data
+  const defaultVal = 30;
 
-  const reading = keywordScore(combined, READING_KEYWORDS) || defaultVal;
-  const nightDriving = keywordScore(combined, NIGHT_KEYWORDS) || defaultVal;
-  const computer = keywordScore(combined, COMPUTER_KEYWORDS) || defaultVal;
-  const costFlex = keywordScore(combined, COST_KEYWORDS) || defaultVal;
   const activeLifestyle = keywordScore(combined, ACTIVE_LIFESTYLE_KEYWORDS) || defaultVal;
+  const nearVision = keywordScore(combined, NEAR_VISION_KEYWORDS) || defaultVal;
+  const digitalWork = keywordScore(combined, DIGITAL_WORK_KEYWORDS) || defaultVal;
+  const socialFamily = keywordScore(combined, SOCIAL_FAMILY_KEYWORDS) || defaultVal;
+  const independence = scoreIndependence(inputs.premiumIOLValue, inputs.readinessValue) || defaultVal;
 
   return [
-    { axis: "Reading", patientNeeds: reading, iolStrengths: 85 },
-    { axis: "Night Vision", patientNeeds: nightDriving, iolStrengths: 60 },
-    { axis: "Computer", patientNeeds: computer, iolStrengths: 80 },
-    { axis: "Cost Flex", patientNeeds: costFlex, iolStrengths: 70 },
-    { axis: "Lifestyle", patientNeeds: activeLifestyle, iolStrengths: 75 },
+    { axis: "Active Lifestyle", patientNeeds: activeLifestyle, iolStrengths: 75 },
+    { axis: "Near Vision", patientNeeds: nearVision, iolStrengths: 85 },
+    { axis: "Digital/Work", patientNeeds: digitalWork, iolStrengths: 80 },
+    { axis: "Social/Family", patientNeeds: socialFamily, iolStrengths: 70 },
+    { axis: "Independence", patientNeeds: independence, iolStrengths: 75 },
   ];
 }

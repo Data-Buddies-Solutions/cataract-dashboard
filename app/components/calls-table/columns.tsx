@@ -15,7 +15,6 @@ export type CallRow = {
   callSuccessful: boolean | null;
   sentiment: string | null;
   callDurationSecs: number | null;
-  visionScale: number | null;
 };
 
 function formatDuration(secs: number): string {
@@ -87,23 +86,6 @@ export const columns: ColumnDef<CallRow>[] = [
     cell: ({ row }) => {
       const secs = row.original.callDurationSecs;
       return secs != null ? formatDuration(secs) : "—";
-    },
-  },
-  {
-    accessorKey: "visionScale",
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-      >
-        Vision Scale
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => {
-      const scale = row.original.visionScale;
-      if (scale === null) return <span className="text-muted-foreground">—</span>;
-      return <span className="text-sm">{scale}</span>;
     },
   },
 ];

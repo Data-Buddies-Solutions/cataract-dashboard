@@ -112,7 +112,6 @@ export default async function CallsListPage({
       callSuccessful: event.callSuccessful,
       sentiment: sentimentEntry?.value || null,
       callDurationSecs: event.callDurationSecs,
-      visionScale: event.visionScale,
     };
   });
 
